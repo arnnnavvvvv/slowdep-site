@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep — realistic latency for Node.js</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0c0c;
+  --surface: #141414;
+  --card: #1a1a1a;
+  --border: #252525;
+  --border-light: #2e2e2e;
+  --text: #f0f0f0;
+  --mid: #888888;
+  --muted: #555555;
+  --sans: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  /* accent palette for graphs + code */
+  --blue:   #7aa2f7;
+  --purple: #bb9af7;
+  --cyan:   #7dcfff;
+  --green:  #9ece6a;
+  --orange: #ff9e64;
+  --red:    #f7768e;
+  --yellow: #e0af68;
+}
+
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: var(--mid); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--text); }
+
+/* HERO */
+.hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 2rem 4rem; text-align: center; }
+
+.hero-logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.hero-logo {
+  font-family: var(--sans);
+  font-size: clamp(3.5rem, 10vw, 7rem);
+  font-weight: 600;
+  letter-spacing: -3px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.hero-icon-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 4px;
+  align-self: flex-end;
+}
+
+.hero-icon-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--muted);
+  transition: all 0.15s;
+  background: var(--surface);
+}
+
+.hero-icon-link:hover { color: var(--text); border-color: var(--mid); }
+.hero-icon-link svg { width: 14px; height: 14px; }
+
+.hero-sub { font-size: 15px; color: var(--mid); max-width: 420px; line-height: 1.8; font-weight: 300; margin-bottom: 3rem; }
+
+/* LIVE VIZ */
+.live-viz { width: 100%; max-width: 500px; margin-bottom: 2.5rem; }
+
+.viz-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+
+.viz-live { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+.viz-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 56px; border-bottom: 1px solid var(--border); }
+.bar { flex: 1; border-radius: 1px 1px 0 0; min-height: 1px; transition: height 0.35s ease, background 0.35s ease; background: var(--border-light); }
+.bar.high  { background: var(--red); }
+.bar.mid-h { background: var(--yellow); opacity: 0.85; }
+.bar.low   { background: var(--cyan); opacity: 0.7; }
+
+.viz-footer { display: flex; justify-content: space-between; margin-top: 0.5rem; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.viz-footer .vf-p50 { color: var(--cyan); }
+.viz-footer .vf-last { color: var(--text); }
+.viz-footer .vf-p99 { color: var(--red); }
+
+/* INSTALL */
+.install-wrap { display: flex; align-items: center; gap: 0.75rem; background: var(--surface); border: 1px solid var(--border-light); border-radius: 8px; padding: 0.875rem 1.25rem; max-width: 300px; width: 100%; }
+.install-prompt { font-family: var(--mono); color: var(--muted); font-size: 13px; }
+.install-cmd { font-family: var(--mono); color: var(--text); font-size: 13px; flex: 1; }
+.copy-btn { background: none; border: 1px solid var(--border-light); color: var(--muted); font-family: var(--mono); font-size: 10px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.5px; }
+.copy-btn:hover { border-color: var(--mid); color: var(--text); }
+.copy-btn.ok { color: var(--green); border-color: var(--border-light); }
+
+/* DIVIDER */
+.divider { max-width: 640px; margin: 0 auto; border: none; border-top: 1px solid var(--border); }
+
+/* SECTIONS */
+section { max-width: 640px; margin: 0 auto; padding: 4rem 2rem; }
+.section-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+.section-title { font-size: clamp(1.3rem, 3vw, 1.75rem); font-weight: 500; letter-spacing: -0.5px; margin-bottom: 1rem; line-height: 1.25; color: var(--text); }
+.section-body { color: var(--mid); font-size: 14px; line-height: 1.9; font-weight: 300; }
+
+/* CODE TABS */
+.code-tabs { display: flex; gap: 0; margin-top: 2rem; border-bottom: 1px solid var(--border); }
+.tab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.5px; padding: 0.6rem 1rem; background: none; border: none; color: var(--muted); cursor: pointer; border-bottom: 1px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.tab.active { color: var(--text); border-bottom-color: var(--blue); }
+.tab:hover:not(.active) { color: var(--mid); }
+.code-panel { display: none; }
+.code-panel.active { display: block; }
+.code-block { background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 6px 6px; padding: 1.5rem; overflow-x: auto; }
+.code-block pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.9; color: var(--text); }
+
+/* syntax colors */
+.kw  { color: var(--purple); }
+.fn  { color: var(--blue); }
+.str { color: var(--green); }
+.cm  { color: #3d5166; font-style: italic; }
+.acc { color: var(--cyan); font-weight: 500; }
+.num { color: var(--orange); }
+
+/* PRESETS TABLE */
+.presets-grid { margin-top: 2rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+
+.preset-row {
+  display: grid;
+  grid-template-columns: 1fr 56px 56px 64px 64px;
+  background: var(--surface);
+  padding: 0.7rem 1rem;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.preset-row:last-child { border-bottom: none; }
+.preset-row.header { background: var(--card); color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.preset-name { color: var(--cyan); }
+.preset-val  { color: var(--mid); }
+.preset-err  { color: var(--mid); }
+
+/* HOW IT WORKS */
+.comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; }
+.cmp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; }
+.cmp-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 1rem; }
+.flat-bars, .lognorm-bars { display: flex; align-items: flex-end; gap: 3px; height: 44px; border-bottom: 1px solid var(--border); }
+.flat-bar { flex: 1; height: 24px; background: var(--border-light); border-radius: 1px 1px 0 0; }
+.ln-bar { flex: 1; border-radius: 1px 1px 0 0; }
+.cmp-note { font-size: 11px; color: var(--muted); margin-top: 0.6rem; font-family: var(--mono); line-height: 1.5; }
+
+/* FOOTER */
+footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; max-width: 640px; margin: 0 auto; }
+.footer-links { display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 1rem; }
+.footer-link { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--muted); transition: color 0.15s; }
+.footer-link:hover { color: var(--text); text-decoration: none; }
+.footer-copy { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+@media (max-width: 560px) {
+  .preset-row { grid-template-columns: 100px 52px 52px 60px 60px; font-size: 10.5px; }
+  .comparison { grid-template-columns: 1fr; }
+  .hero-logo { letter-spacing: -2px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-logo-row">
+    <h1 class="hero-logo">slowdep</h1>
+    <div class="hero-icon-links">
+      <a href="https://github.com/arnnnavvvvv/slowdep" class="hero-icon-link" title="GitHub" target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      </a>
+      <a href="https://npmjs.com/package/slowdep" class="hero-icon-link" title="npm" target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <p class="hero-sub">
+    Wrap any async function with realistic latency.<br>
+    Test how your app survives slow, unpredictable dependencies.
+  </p>
+
+  <div class="live-viz">
+    <div class="viz-label">
+      <span>postgres preset · live samples</span>
+      <span class="viz-live"><span class="viz-dot"></span>sampling</span>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="viz-footer">
+      <span class="vf-p50">p50 ~5ms</span>
+      <span class="vf-last" id="last-val">—</span>
+      <span class="vf-p99">p99 ~200ms</span>
+    </div>
+  </div>
+
+  <div class="install-wrap">
+    <span class="install-prompt">$</span>
+    <span class="install-cmd">npm install slowdep</span>
+    <button class="copy-btn" onclick="copyInstall(this)">copy</button>
+  </div>
+</div>
+
+<hr class="divider">
+
+<section id="usage">
+  <div class="section-eyebrow">usage</div>
+  <h2 class="section-title">One import. Any async function.</h2>
+  <p class="section-body">Drop slowdep anywhere you call an external dependency. It preserves the original function signature — same inputs, same outputs, same errors. Just slower and more realistic.</p>
+
+  <div class="code-tabs">
+    <button class="tab active" onclick="switchTab(this,'preset')">preset</button>
+    <button class="tab" onclick="switchTab(this,'custom')">custom profile</button>
+    <button class="tab" onclick="switchTab(this,'client')">wrap a client</button>
+  </div>
+
+  <div id="tab-preset" class="code-panel active">
+    <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// your real function, unchanged</span>
+<span class="kw">const</span> <span class="fn">findUser</span> = <span class="kw">async</span> (id) => db.query(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id]);
+
+<span class="cm">// wrap it — now behaves like real Postgres</span>
+<span class="kw">const</span> <span class="acc">slowFindUser</span> = <span class="fn">withLatency</span>(findUser, <span class="str">'postgres'</span>);
+
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowFindUser</span>(<span class="num">42</span>); <span class="cm">// every call is different</span></pre></div>
+  </div>
+
+  <div id="tab-custom" class="code-panel">
+    <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> <span class="acc">slowFetch</span> = <span class="fn">withLatency</span>(fetchExternalAPI, {
+  p50: <span class="num">100</span>,         <span class="cm">// typical call: ~100ms</span>
+  p99: <span class="num">2000</span>,        <span class="cm">// worst 1%: up to 2 seconds</span>
+  errorRate: <span class="num">0.01</span>,  <span class="cm">// 1% throw a transient error</span>
+});
+
+<span class="kw">const</span> data = <span class="kw">await</span> <span class="acc">slowFetch</span>(<span class="str">'/api/users'</span>);</pre></div>
+  </div>
+
+  <div id="tab-client" class="code-panel">
+    <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// wrap every method on a client at once</span>
+<span class="kw">const</span> <span class="acc">slowRedis</span> = <span class="fn">withLatencyAll</span>(redisClient, <span class="str">'redis'</span>);
+
+<span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">get</span>(<span class="str">'key'</span>);      <span class="cm">// slow</span>
+<span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">set</span>(<span class="str">'k'</span>, <span class="str">'v'</span>);  <span class="cm">// slow</span>
+<span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">del</span>(<span class="str">'key'</span>);     <span class="cm">// slow</span></pre></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="presets">
+  <div class="section-eyebrow">presets</div>
+  <h2 class="section-title">Real-world latency profiles, built in.</h2>
+  <p class="section-body">Based on real p50/p95/p99 data from production systems. Pass a string and you're done.</p>
+
+  <div class="presets-grid">
+    <div class="preset-row header">
+      <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>err rate</span>
+    </div>
+    <div class="preset-row"><span class="preset-name">'postgres'</span><span class="preset-val">5ms</span><span class="preset-val">50ms</span><span class="preset-val">200ms</span><span class="preset-err">0.1%</span></div>
+    <div class="preset-row"><span class="preset-name">'mysql'</span><span class="preset-val">4ms</span><span class="preset-val">40ms</span><span class="preset-val">180ms</span><span class="preset-err">0.1%</span></div>
+    <div class="preset-row"><span class="preset-name">'redis'</span><span class="preset-val">1ms</span><span class="preset-val">5ms</span><span class="preset-val">20ms</span><span class="preset-err">0.05%</span></div>
+    <div class="preset-row"><span class="preset-name">'mongodb'</span><span class="preset-val">8ms</span><span class="preset-val">60ms</span><span class="preset-val">250ms</span><span class="preset-err">0.1%</span></div>
+    <div class="preset-row"><span class="preset-name">'dynamodb'</span><span class="preset-val">3ms</span><span class="preset-val">15ms</span><span class="preset-val">50ms</span><span class="preset-err">0.05%</span></div>
+    <div class="preset-row"><span class="preset-name">'s3'</span><span class="preset-val">30ms</span><span class="preset-val">150ms</span><span class="preset-val">500ms</span><span class="preset-err">0.1%</span></div>
+    <div class="preset-row"><span class="preset-name">'stripe'</span><span class="preset-val">200ms</span><span class="preset-val">800ms</span><span class="preset-val">2000ms</span><span class="preset-err">0.2%</span></div>
+    <div class="preset-row"><span class="preset-name">'openai'</span><span class="preset-val">800ms</span><span class="preset-val">3000ms</span><span class="preset-val">8000ms</span><span class="preset-err">0.5%</span></div>
+    <div class="preset-row"><span class="preset-name">'anthropic'</span><span class="preset-val">600ms</span><span class="preset-val">2500ms</span><span class="preset-val">7000ms</span><span class="preset-err">0.5%</span></div>
+    <div class="preset-row"><span class="preset-name">'http'</span><span class="preset-val">80ms</span><span class="preset-val">300ms</span><span class="preset-val">1000ms</span><span class="preset-err">1%</span></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="how">
+  <div class="section-eyebrow">how it works</div>
+  <h2 class="section-title">Why setTimeout is lying to you.</h2>
+  <p class="section-body">A flat delay gives every call the same wait time. Real dependencies don't work like that — they respond in 5ms most of the time, hit 200ms occasionally, and spike past 1s when GC pauses, cold caches, or noisy neighbors show up.</p>
+  <p class="section-body" style="margin-top:1rem;">slowdep fits a lognormal distribution to your p50 and p99 values using the Box-Muller transform. The result: fast most of the time, with a realistic long tail — the exact shape that breaks retry logic, timeouts, and circuit breakers in production.</p>
+
+  <div class="comparison">
+    <div class="cmp-card">
+      <div class="cmp-title">setTimeout(fn, 200)</div>
+      <div class="flat-bars" id="flat-bars"></div>
+      <div class="cmp-note">every call identical.<br>gives false confidence.</div>
+    </div>
+    <div class="cmp-card">
+      <div class="cmp-title">slowdep · lognormal</div>
+      <div class="lognorm-bars" id="ln-bars"></div>
+      <div class="cmp-note">fast usually. slow sometimes.<br>rarely very slow. like production.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ♥ by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+
+<script>
+function lognormalSample(mu, sigma) {
+  const u1 = Math.random(), u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  return Math.exp(mu + sigma * z);
+}
+function sampleLatency(p50, p99) {
+  const mu = Math.log(p50), sigma = (Math.log(p99) - mu) / 2.326;
+  return Math.min(lognormalSample(mu, sigma), p99 * 3);
+}
+
+// hero bars
+const BAR_COUNT = 36;
+const barsEl = document.getElementById('bars');
+const lastValEl = document.getElementById('last-val');
+const history = Array(BAR_COUNT).fill(5);
+for (let i = 0; i < BAR_COUNT; i++) {
+  const b = document.createElement('div'); b.className = 'bar'; barsEl.appendChild(b);
+}
+function updateBars() {
+  const val = sampleLatency(5, 200);
+  history.shift(); history.push(val);
+  const max = Math.max(...history, 1);
+  barsEl.querySelectorAll('.bar').forEach((b, i) => {
+    const ratio = history[i] / max;
+    b.style.height = Math.max(1, ratio * 56) + 'px';
+    b.className = 'bar' + (ratio > 0.65 ? ' high' : ratio > 0.3 ? ' mid-h' : ' low');
+  });
+  lastValEl.textContent = Math.round(val) + 'ms';
+}
+setInterval(updateBars, 450); updateBars();
+
+// flat bars
+const flatEl = document.getElementById('flat-bars');
+for (let i = 0; i < 18; i++) {
+  const b = document.createElement('div'); b.className = 'flat-bar'; flatEl.appendChild(b);
+}
+
+// lognormal comparison bars — color-coded by height
+const lnEl = document.getElementById('ln-bars');
+const samples = Array.from({length: 18}, () => sampleLatency(5, 200));
+const maxS = Math.max(...samples);
+samples.forEach(v => {
+  const b = document.createElement('div');
+  b.className = 'ln-bar';
+  const ratio = v / maxS;
+  b.style.height = Math.max(1, ratio * 44) + 'px';
+  b.style.background = ratio > 0.65 ? 'var(--red)' : ratio > 0.3 ? 'var(--yellow)' : 'var(--cyan)';
+  b.style.opacity = '0.85';
+  lnEl.appendChild(b);
+});
+
+function switchTab(btn, id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+function copyInstall(btn) {
+  navigator.clipboard.writeText('npm install slowdep').then(() => {
+    btn.textContent = 'copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('ok'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>

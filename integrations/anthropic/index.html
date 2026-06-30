@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>slowdep + Anthropic — integration</title>
+<title>slowdep + Anthropic &mdash; integration</title>
 <meta name="description" content="Simulate realistic Anthropic Claude API latency (p50: 600ms, p99: 7s) without burning tokens. Test timeout and retry logic for Claude-powered features.">
 <link rel="canonical" href="https://slowdeps.site/integrations/anthropic/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -58,7 +58,7 @@
     </div>
     <div class="callout tip" style="margin-top:1.25rem;">
       <div class="callout-title">Streaming vs non-streaming latency</div>
-      <p>slowdep delays the <em>start</em> of the API call — the initial request latency. For streaming responses (<code>client.messages.stream()</code>), slowdep delays when the stream begins, not the individual token delivery. This accurately models network latency and time-to-first-token, which is the most impactful latency for user experience.</p>
+      <p>slowdep delays the <em>start</em> of the API call &mdash; the initial request latency. For streaming responses (<code>client.messages.stream()</code>), slowdep delays when the stream begins, not the individual token delivery. This accurately models network latency and time-to-first-token, which is the most impactful latency for user experience.</p>
     </div>
   </div>
 
@@ -66,14 +66,14 @@
   <div class="section">
     <div class="section-eyebrow">Quick start</div>
     <h2 class="section-title">Wrap messages.create</h2>
-    <p class="section-body">Wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">client.messages.create</code> — the primary method for non-streaming Claude requests. Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">.bind(client.messages)</code> to preserve the internal context.</p>
+    <p class="section-body">Wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">client.messages.create</code> &mdash; the primary method for non-streaming Claude requests. Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">.bind(client.messages)</code> to preserve the internal context.</p>
     <div class="codeblock" style="margin-top:1.25rem;">
 <pre><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
 <span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
 
-<span class="cm">// Wrap messages.create — bind to preserve internal context</span>
+<span class="cm">// Wrap messages.create &mdash; bind to preserve internal context</span>
 <span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
   client.messages.create.<span class="fn">bind</span>(client.messages),
   <span class="str">'anthropic'</span>
@@ -141,7 +141,7 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
 <span class="kw">import</span> { generateReport } <span class="kw">from</span> <span class="str">'../src/ai/report'</span>;
 
 <span class="fn">test</span>(<span class="str">'generateReport times out after 8s and returns fallback'</span>, <span class="kw">async</span> () => {
-  <span class="cm">// Simulate a very slow Claude response — complex prompt with long output</span>
+  <span class="cm">// Simulate a very slow Claude response &mdash; complex prompt with long output</span>
   <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(
     jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeMessage</span>(<span class="str">'detailed report...'</span>)),
     { p50: <span class="num">10000</span>, p99: <span class="num">18000</span> }
@@ -191,7 +191,7 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
 <span class="fn">test</span>(<span class="str">'streaming UI shows thinking state before first token'</span>, <span class="kw">async</span> () => {
   <span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
 
-  <span class="cm">// Wrap the stream factory — latency applied before stream begins</span>
+  <span class="cm">// Wrap the stream factory &mdash; latency applied before stream begins</span>
   <span class="kw">const</span> <span class="acc">slowStream</span> = <span class="fn">withLatency</span>(
     client.messages.stream.<span class="fn">bind</span>(client.messages),
     <span class="str">'anthropic'</span>
@@ -248,7 +248,7 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
     <div class="section-eyebrow">Production safety</div>
     <h2 class="section-title">Never wrap real API calls</h2>
     <div class="codeblock" style="margin-top:1rem;">
-<pre><span class="cm">// src/ai/claude.ts — export the right client for each environment</span>
+<pre><span class="cm">// src/ai/claude.ts &mdash; export the right client for each environment</span>
 <span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
 <span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
@@ -270,7 +270,7 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
     </div>
     <div class="callout warn" style="margin-top:1.25rem;">
       <div class="callout-title">Only use slowdep on mocks</div>
-      <p>Like all LLM integrations, only wrap a <strong>mock function</strong> with slowdep — never a real API client method. Wrapping a real API call adds fake latency on top of real latency, making your tests meaningless and your development experience painful.</p>
+      <p>Like all LLM integrations, only wrap a <strong>mock function</strong> with slowdep &mdash; never a real API client method. Wrapping a real API call adds fake latency on top of real latency, making your tests meaningless and your development experience painful.</p>
     </div>
   </div>
 
@@ -280,13 +280,13 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
     <h2 class="section-title">Scenarios this integration helps you verify</h2>
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
-        <li><strong>Time-to-first-token UX</strong> — Claude's TTFT varies; does your UI show a "thinking" indicator within 100ms of the request starting?</li>
-        <li><strong>Streaming vs buffered choice</strong> — at p50 of 600ms, buffered responses feel instant; at p99 of 7s, streaming becomes essential for UX</li>
-        <li><strong>Overload handling (529)</strong> — Claude can return 529 Overloaded; your retry logic must handle it with appropriate backoff</li>
-        <li><strong>Multi-turn context budget</strong> — longer conversations have higher latency; verify your UX still feels responsive after 10 turns</li>
-        <li><strong>Parallel call efficiency</strong> — running two independent Claude calls in parallel cuts total latency roughly in half at p50</li>
-        <li><strong>Tool use round-trips</strong> — agentic workflows make multiple sequential API calls; each call adds p50 latency — 5 tool uses = ~3s minimum</li>
-        <li><strong>Fallback to cached response</strong> — when Claude is slow or unavailable, does your service return a stale cached response or error gracefully?</li>
+        <li><strong>Time-to-first-token UX</strong> &mdash; Claude's TTFT varies; does your UI show a "thinking" indicator within 100ms of the request starting?</li>
+        <li><strong>Streaming vs buffered choice</strong> &mdash; at p50 of 600ms, buffered responses feel instant; at p99 of 7s, streaming becomes essential for UX</li>
+        <li><strong>Overload handling (529)</strong> &mdash; Claude can return 529 Overloaded; your retry logic must handle it with appropriate backoff</li>
+        <li><strong>Multi-turn context budget</strong> &mdash; longer conversations have higher latency; verify your UX still feels responsive after 10 turns</li>
+        <li><strong>Parallel call efficiency</strong> &mdash; running two independent Claude calls in parallel cuts total latency roughly in half at p50</li>
+        <li><strong>Tool use round-trips</strong> &mdash; agentic workflows make multiple sequential API calls; each call adds p50 latency &mdash; 5 tool uses = ~3s minimum</li>
+        <li><strong>Fallback to cached response</strong> &mdash; when Claude is slow or unavailable, does your service return a stale cached response or error gracefully?</li>
       </ul>
     </div>
   </div>
@@ -309,7 +309,7 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
   <span class="str">'anthropic'</span>
 );
 
-<span class="cm">// Full type safety — result is Message, content is TextBlock[]</span>
+<span class="cm">// Full type safety &mdash; result is Message, content is TextBlock[]</span>
 <span class="kw">const</span> response: Message = <span class="kw">await</span> <span class="acc">slowCreate</span>({
   model: <span class="str">'claude-opus-4-5'</span>,
   max_tokens: <span class="num">512</span>,
@@ -332,16 +332,16 @@ console.<span class="fn">log</span>(message.content[<span class="num">0</span>].
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
 </body>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>slowdep + Redis — integration</title>
+<title>slowdep + Redis &mdash; integration</title>
 <meta name="description" content="Add realistic Redis latency (p50: 1ms, p99: 20ms) to cache operations in tests and local development.">
 <link rel="canonical" href="https://slowdeps.site/integrations/redis/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -33,7 +33,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>Redis</div>
     <h1 class="page-title">slowdep + Redis</h1>
-    <p class="page-desc">Add realistic Redis latency (p50: 1ms, p99: 20ms) to cache operations in tests and local development. Redis is fast — but not instant, and your code needs to handle the difference.</p>
+    <p class="page-desc">Add realistic Redis latency (p50: 1ms, p99: 20ms) to cache operations in tests and local development. Redis is fast &mdash; but not instant, and your code needs to handle the difference.</p>
   </div>
 </div>
 
@@ -43,7 +43,7 @@
   <div class="section">
     <div class="section-eyebrow">Preset</div>
     <h2 class="section-title">redis latency profile</h2>
-    <p class="section-body">Redis is exceptionally fast in production — sub-millisecond at p50. But under memory pressure, key eviction, or network jitter, the p99 can spike to 20ms+. Without slowdep, your local Redis returns in &lt;0.1ms and you never notice code that assumes cache is "free".</p>
+    <p class="section-body">Redis is exceptionally fast in production &mdash; sub-millisecond at p50. But under memory pressure, key eviction, or network jitter, the p99 can spike to 20ms+. Without slowdep, your local Redis returns in &lt;0.1ms and you never notice code that assumes cache is "free".</p>
     <div class="presets-grid">
       <div class="preset-row header">
         <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
@@ -66,7 +66,7 @@
   <div class="section">
     <div class="section-eyebrow">Quick start</div>
     <h2 class="section-title">Wrap the ioredis client</h2>
-    <p class="section-body">The fastest path: use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on your ioredis instance. Every command — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">get</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">set</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">del</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">expire</code>, and pipeline — will experience realistic latency.</p>
+    <p class="section-body">The fastest path: use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on your ioredis instance. Every command &mdash; <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">get</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">set</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">del</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">expire</code>, and pipeline &mdash; will experience realistic latency.</p>
     <div class="codeblock" style="margin-top:1.25rem;">
 <pre><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
 <span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
@@ -76,7 +76,7 @@
 <span class="cm">// Wrap every Redis command with realistic latency</span>
 <span class="kw">const</span> <span class="acc">slowRedis</span> = <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>);
 
-<span class="cm">// Cache-aside pattern — now with realistic latency</span>
+<span class="cm">// Cache-aside pattern &mdash; now with realistic latency</span>
 <span class="kw">async function</span> <span class="fn">getCachedUser</span>(userId: string) {
   <span class="kw">const</span> cached = <span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">get</span>(<span class="str">`user:</span>${userId}<span class="str">`</span>);
   <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
@@ -169,7 +169,7 @@
     <div id="redis-timeout" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="fn">test</span>(<span class="str">'slow Redis falls back to DB gracefully'</span>, <span class="kw">async</span> () => {
-  <span class="cm">// Simulate Redis under pressure — p99 of 500ms</span>
+  <span class="cm">// Simulate Redis under pressure &mdash; p99 of 500ms</span>
   <span class="kw">const</span> slowGet = <span class="fn">withLatency</span>(
     jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="kw">null</span>),
     { p50: <span class="num">100</span>, p99: <span class="num">500</span> }
@@ -207,7 +207,7 @@
     </div>
     <div class="callout warn" style="margin-top:1.25rem;">
       <div class="callout-title">Pipeline note</div>
-      <p>If you use ioredis pipelines (<code>redis.pipeline().get(...).set(...).exec()</code>), <code>withLatencyAll</code> wraps the <code>pipeline</code> factory method, not the individual pipeline commands. The latency applies once — at the pipeline execution — which accurately reflects the single round-trip cost.</p>
+      <p>If you use ioredis pipelines (<code>redis.pipeline().get(...).set(...).exec()</code>), <code>withLatencyAll</code> wraps the <code>pipeline</code> factory method, not the individual pipeline commands. The latency applies once &mdash; at the pipeline execution &mdash; which accurately reflects the single round-trip cost.</p>
     </div>
   </div>
 
@@ -217,12 +217,12 @@
     <h2 class="section-title">Scenarios this integration helps you verify</h2>
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
-        <li><strong>N+1 cache reads</strong> — realistic per-command latency makes sequential cache reads visible; push toward <code>mget</code> with multiple keys</li>
-        <li><strong>Cache stampede handling</strong> — when multiple requests miss the cache simultaneously, does your code protect against thundering herd?</li>
-        <li><strong>Redis fallback to DB</strong> — if Redis is slow (p99 tail), does your service degrade gracefully to the database?</li>
-        <li><strong>Session timeout handling</strong> — does your auth middleware handle a slow <code>get(sessionKey)</code> within the request deadline?</li>
-        <li><strong>Rate limiter accuracy</strong> — sliding window rate limiters depend on Redis ZADD/ZREMRANGEBYSCORE; verify they work with network latency</li>
-        <li><strong>Pub/sub delivery timing</strong> — event-driven features relying on Redis pub/sub need to account for delivery latency in their correctness guarantees</li>
+        <li><strong>N+1 cache reads</strong> &mdash; realistic per-command latency makes sequential cache reads visible; push toward <code>mget</code> with multiple keys</li>
+        <li><strong>Cache stampede handling</strong> &mdash; when multiple requests miss the cache simultaneously, does your code protect against thundering herd?</li>
+        <li><strong>Redis fallback to DB</strong> &mdash; if Redis is slow (p99 tail), does your service degrade gracefully to the database?</li>
+        <li><strong>Session timeout handling</strong> &mdash; does your auth middleware handle a slow <code>get(sessionKey)</code> within the request deadline?</li>
+        <li><strong>Rate limiter accuracy</strong> &mdash; sliding window rate limiters depend on Redis ZADD/ZREMRANGEBYSCORE; verify they work with network latency</li>
+        <li><strong>Pub/sub delivery timing</strong> &mdash; event-driven features relying on Redis pub/sub need to account for delivery latency in their correctness guarantees</li>
       </ul>
     </div>
   </div>
@@ -237,7 +237,7 @@
 
 <span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.<span class="acc">REDIS_URL</span>);
 
-<span class="cm">// withLatencyAll preserves the Redis type — slowCache is still typed as Redis</span>
+<span class="cm">// withLatencyAll preserves the Redis type &mdash; slowCache is still typed as Redis</span>
 <span class="kw">const</span> <span class="acc">slowCache</span>: Redis = <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>);
 
 <span class="cm">// Type-safe cache helper</span>
@@ -261,16 +261,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
 </body>

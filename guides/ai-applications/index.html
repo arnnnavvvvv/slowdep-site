@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Testing AI applications — slowdep guides</title>
+<title>Testing AI applications &mdash; slowdep guides</title>
 <meta name="description" content="LLM API calls are 600ms–8s with high variance. slowdep's OpenAI and Anthropic presets let you test real latency behavior without burning tokens.">
 <link rel="canonical" href="https://slowdeps.site/guides/ai-applications/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -45,7 +45,7 @@
     <p class="section-body">
       LLM API calls are unlike any other dependency. They're slow (600ms–8s for typical responses),
       highly variable (prompt length, output length, and server load all affect latency),
-      and the tail can be extreme — a long generation on a loaded server can take 30+ seconds.
+      and the tail can be extreme &mdash; a long generation on a loaded server can take 30+ seconds.
       Streaming adds another dimension: the latency before the first token arrives is different
       from the total latency.
     </p>
@@ -53,7 +53,7 @@
       Testing this with <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">setTimeout(r, 1000)</code> is meaningless. Your "thinking..." indicator
       that renders for exactly 1000ms in tests might flash for 200ms or hang for 12 seconds in
       production. Rate limits kick in under real load. Cold starts add 2–5 seconds. The only way
-      to test this correctly is with realistic latency distribution — without burning API tokens.
+      to test this correctly is with realistic latency distribution &mdash; without burning API tokens.
     </p>
     <div class="callout">
       <div class="callout-title">Cost savings</div>
@@ -65,7 +65,7 @@
     <div class="section-eyebrow">OpenAI preset</div>
     <h2 class="section-title">The <code style="font-family:var(--mono);font-size:1rem;color:var(--cyan);">openai</code> preset</h2>
     <p class="section-body">
-      The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'openai'</code> preset is configured with p50: 800ms, p99: 8s —
+      The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'openai'</code> preset is configured with p50: 800ms, p99: 8s &mdash;
       based on typical GPT-4 latency for medium-length completions. Most calls complete
       in under a second. 1% exceed 8 seconds.
     </p>
@@ -86,7 +86,7 @@
 
 <span class="cm">// wrap with realistic OpenAI latency</span>
 <span class="kw">const</span> slowOpenAI = <span class="fn">withLatencyAll</span>(mockOpenAI.chat.completions, <span class="str">'openai'</span>);
-<span class="cm">// p50: 800ms, p99: 8000ms — lognormal distribution</span>
+<span class="cm">// p50: 800ms, p99: 8000ms &mdash; lognormal distribution</span>
 
 <span class="kw">const</span> response = <span class="kw">await</span> slowOpenAI.<span class="fn">create</span>({ model: <span class="str">'gpt-4'</span>, messages: [...] });
 <span class="cm">// behaves like a real OpenAI call, latency-wise</span></pre></div>
@@ -96,7 +96,7 @@
     <div class="section-eyebrow">Anthropic preset</div>
     <h2 class="section-title">The <code style="font-family:var(--mono);font-size:1rem;color:var(--cyan);">anthropic</code> preset</h2>
     <p class="section-body">
-      The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'anthropic'</code> preset uses p50: 600ms, p99: 7s —
+      The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'anthropic'</code> preset uses p50: 600ms, p99: 7s &mdash;
       Claude models tend to be slightly faster at median but have a similar tail.
       Use this when wrapping Anthropic SDK calls.
     </p>
@@ -120,7 +120,7 @@ jest.<span class="fn">spyOn</span>(anthropic.messages, <span class="str">'create
     <div class="section-eyebrow">Streaming</div>
     <h2 class="section-title">Testing streaming UX</h2>
     <p class="section-body">
-      slowdep wraps the function call itself — the delay is applied before the async function
+      slowdep wraps the function call itself &mdash; the delay is applied before the async function
       resolves. For streaming LLM responses, this models the "time to first token" latency:
       the delay before the stream starts flowing. Test that your "thinking..." indicator
       renders correctly during this initial wait period.
@@ -141,7 +141,7 @@ jest.<span class="fn">spyOn</span>(anthropic.messages, <span class="str">'create
   <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByTestId</span>(<span class="str">'thinking-indicator'</span>)).<span class="fn">toBeInTheDocument</span>();
   <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">queryByTestId</span>(<span class="str">'message-content'</span>)).<span class="fn">not</span>.<span class="fn">toBeInTheDocument</span>();
 
-  <span class="cm">// advance past p50 — stream starts flowing</span>
+  <span class="cm">// advance past p50 &mdash; stream starts flowing</span>
   jest.<span class="fn">advanceTimersByTime</span>(<span class="num">800</span>);
   <span class="kw">await</span> <span class="fn">waitFor</span>(() =&gt; {
     <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByTestId</span>(<span class="str">'message-content'</span>)).<span class="fn">toBeInTheDocument</span>();
@@ -191,10 +191,10 @@ jest.<span class="fn">spyOn</span>(anthropic.messages, <span class="str">'create
     <p class="section-body">
       The pattern for zero-cost AI testing: return a fixture response from the mock function,
       then wrap it with slowdep to add realistic latency. Your tests exercise all latency-dependent
-      code paths — timeout logic, streaming UX, retry behavior, loading states — without
+      code paths &mdash; timeout logic, streaming UX, retry behavior, loading states &mdash; without
       a single real API call.
     </p>
-    <div class="codeblock"><pre><span class="cm">// test/setup.ts — wraps AI clients globally in test environment</span>
+    <div class="codeblock"><pre><span class="cm">// test/setup.ts &mdash; wraps AI clients globally in test environment</span>
 <span class="kw">import</span> { <span class="acc">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="kw">if</span> (process.env.<span class="acc">NODE_ENV</span> === <span class="str">'test'</span>) {
@@ -239,8 +239,8 @@ jest.<span class="fn">spyOn</span>(anthropic.messages, <span class="str">'create
     <span class="fn">runAgent</span>({ planner: plannerCall, tool: toolCallLLM, summary: summaryCall, db: dbLookup }),
     <span class="kw">new</span> <span class="fn">Promise</span>((_, r) =&gt; <span class="fn">setTimeout</span>(() =&gt; r(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'agent timeout'</span>)), <span class="num">15000</span>)),
   ]);
-  <span class="cm">// p50 chain: 800 + 600 + 800 + 5 ˜ 2.2s — well within 15s timeout</span>
-  <span class="cm">// p99 chain: 8000 + 7000 + 8000 + 200 ˜ 23s — might timeout, as expected</span>
+  <span class="cm">// p50 chain: 800 + 600 + 800 + 5 ˜ 2.2s &mdash; well within 15s timeout</span>
+  <span class="cm">// p99 chain: 8000 + 7000 + 8000 + 200 ˜ 23s &mdash; might timeout, as expected</span>
   <span class="fn">expect</span>(result).<span class="fn">toHaveProperty</span>(<span class="str">'answer'</span>);
 });</pre></div>
   </div>
@@ -253,16 +253,16 @@ jest.<span class="fn">spyOn</span>(anthropic.messages, <span class="str">'create
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

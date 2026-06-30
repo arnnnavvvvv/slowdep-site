@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>setTimeout vs slowdep — comparison</title>
+<title>setTimeout vs slowdep &mdash; comparison</title>
 <meta name="description" content="setTimeout adds a fixed delay. slowdep adds realistic latency. Here's why the difference matters in practice.">
 <link rel="canonical" href="https://slowdeps.site/comparisons/settimeout-vs-slowdep/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -50,8 +50,8 @@
       <tr><th>feature</th><th>setTimeout</th><th>slowdep</th></tr>
       <tr>
         <td>delay distribution</td>
-        <td><span class="no">fixed — always exactly N ms</span></td>
-        <td><span class="yes">lognormal — fast most of the time, long tail</span></td>
+        <td><span class="no">fixed &mdash; always exactly N ms</span></td>
+        <td><span class="yes">lognormal &mdash; fast most of the time, long tail</span></td>
       </tr>
       <tr>
         <td>p50 accuracy</td>
@@ -65,23 +65,23 @@
       </tr>
       <tr>
         <td>variance across calls</td>
-        <td><span class="no">zero — all calls identical</span></td>
+        <td><span class="no">zero &mdash; all calls identical</span></td>
         <td><span class="yes">natural variance from distribution</span></td>
       </tr>
       <tr>
         <td>error injection</td>
-        <td><span class="no">manual — throw inside the promise</span></td>
-        <td><span class="yes">errorRate option — probabilistic errors</span></td>
+        <td><span class="no">manual &mdash; throw inside the promise</span></td>
+        <td><span class="yes">errorRate option &mdash; probabilistic errors</span></td>
       </tr>
       <tr>
         <td>TypeScript support</td>
         <td><span class="yes">native</span></td>
-        <td><span class="yes">full — preserves generics</span></td>
+        <td><span class="yes">full &mdash; preserves generics</span></td>
       </tr>
       <tr>
         <td>preserves function signature</td>
         <td><span class="no">requires manual wrapping</span></td>
-        <td><span class="yes">automatic — same args, same return type</span></td>
+        <td><span class="yes">automatic &mdash; same args, same return type</span></td>
       </tr>
       <tr>
         <td>zero setup</td>
@@ -90,13 +90,13 @@
       </tr>
       <tr>
         <td>realistic for retry testing</td>
-        <td><span class="no">no — retries fire at exactly the threshold</span></td>
-        <td><span class="yes">yes — natural distribution exercises retry paths</span></td>
+        <td><span class="no">no &mdash; retries fire at exactly the threshold</span></td>
+        <td><span class="yes">yes &mdash; natural distribution exercises retry paths</span></td>
       </tr>
       <tr>
         <td>realistic for timeout testing</td>
-        <td><span class="no">no — timeouts always fire or never fire</span></td>
-        <td><span class="yes">yes — some calls exceed timeout, most don't</span></td>
+        <td><span class="no">no &mdash; timeouts always fire or never fire</span></td>
+        <td><span class="yes">yes &mdash; some calls exceed timeout, most don't</span></td>
       </tr>
     </table>
   </div>
@@ -113,7 +113,7 @@
       <button class="tab" onclick="switchTab(this,'t-sd')">with slowdep</button>
     </div>
     <div id="t-st" class="code-panel active">
-      <div class="code-block"><pre><span class="cm">// with setTimeout — looks fine, hides bugs</span>
+      <div class="code-block"><pre><span class="cm">// with setTimeout &mdash; looks fine, hides bugs</span>
 <span class="fn">describe</span>(<span class="str">'UserService'</span>, () =&gt; {
   <span class="kw">const</span> mockDb = {
     <span class="fn">findUser</span>: jest.<span class="fn">fn</span>(<span class="kw">async</span> (id: <span class="acc">string</span>) =&gt; {
@@ -128,14 +128,14 @@
   });
 
   <span class="cm">// bugs this test CANNOT catch:</span>
-  <span class="cm">// ? Timeout of 250ms fires when DB takes 300ms — never happens here</span>
-  <span class="cm">// ? Retry fires when DB is slow — always exactly 200ms, retry never triggers</span>
-  <span class="cm">// ? Circuit breaker trips on 30% error rate — no errors injected</span>
-  <span class="cm">// ? Connection pool exhausted by 1% slow calls — no variance</span>
+  <span class="cm">// ? Timeout of 250ms fires when DB takes 300ms &mdash; never happens here</span>
+  <span class="cm">// ? Retry fires when DB is slow &mdash; always exactly 200ms, retry never triggers</span>
+  <span class="cm">// ? Circuit breaker trips on 30% error rate &mdash; no errors injected</span>
+  <span class="cm">// ? Connection pool exhausted by 1% slow calls &mdash; no variance</span>
 });</pre></div>
     </div>
     <div id="t-sd" class="code-panel">
-      <div class="code-block"><pre><span class="cm">// with slowdep — catches real latency bugs</span>
+      <div class="code-block"><pre><span class="cm">// with slowdep &mdash; catches real latency bugs</span>
 <span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="fn">describe</span>(<span class="str">'UserService'</span>, () =&gt; {
@@ -152,10 +152,10 @@
   });
 
   <span class="cm">// bugs this test CAN catch:</span>
-  <span class="cm">// ? Timeout of 250ms fires — some calls will take 200ms+, timeout may trigger</span>
-  <span class="cm">// ? Retry fires on errors — 2% errorRate means retries are exercised</span>
-  <span class="cm">// ? Circuit breaker trips — combine with higher errorRate to test threshold</span>
-  <span class="cm">// ? P99 behavior — naturally sampled, loading states tested realistically</span>
+  <span class="cm">// ? Timeout of 250ms fires &mdash; some calls will take 200ms+, timeout may trigger</span>
+  <span class="cm">// ? Retry fires on errors &mdash; 2% errorRate means retries are exercised</span>
+  <span class="cm">// ? Circuit breaker trips &mdash; combine with higher errorRate to test threshold</span>
+  <span class="cm">// ? P99 behavior &mdash; naturally sampled, loading states tested realistically</span>
 });</pre></div>
     </div>
     <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
@@ -206,7 +206,7 @@
   <span class="kw">return</span> FIXTURE_DATA;
 });
 
-<span class="cm">// after — one import, one wrap</span>
+<span class="cm">// after &mdash; one import, one wrap</span>
 <span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="kw">const</span> mockQuery = <span class="fn">withLatency</span>(
@@ -227,16 +227,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

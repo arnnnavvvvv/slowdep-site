@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Testing timeout handling — slowdep guides</title>
+<title>Testing timeout handling &mdash; slowdep guides</title>
 <meta name="description" content="Verify your timeout logic actually fires when a dependency is slow, using slowdep's p99 configuration.">
 <link rel="canonical" href="https://slowdeps.site/guides/testing-timeouts/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -45,13 +45,13 @@
     <p class="section-body">
       Timeout bugs are invisible in standard test suites. Your code has <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">setTimeout(reject, 5000)</code>
       around an API call. The mock always responds instantly. The timeout is never triggered.
-      The code ships. In production, 1% of calls hit the 5s timeout — and your error handling
+      The code ships. In production, 1% of calls hit the 5s timeout &mdash; and your error handling
       for that case throws an unhandled exception because nobody tested it.
     </p>
     <p class="section-body">
       Timeout bugs take three forms: (1) the timeout fires correctly but the error isn't surfaced to
       the user, (2) the timeout fires but the underlying request isn't cancelled and keeps consuming
-      resources, or (3) the timeout value is wrong — too short, and you time out healthy requests;
+      resources, or (3) the timeout value is wrong &mdash; too short, and you time out healthy requests;
       too long, and you hold users waiting unnecessarily. None of these are testable with an
       instant-returning mock.
     </p>
@@ -71,7 +71,7 @@
     </p>
     <div class="codeblock"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
-<span class="cm">// p50: 100ms, p99: 10s — high variance</span>
+<span class="cm">// p50: 100ms, p99: 10s &mdash; high variance</span>
 <span class="cm">// ~1% of calls will exceed 10s, triggering your timeout</span>
 <span class="kw">const</span> slowApi = <span class="fn">withLatency</span>(realApiClient.fetch, {
   p50: <span class="num">100</span>,
@@ -97,7 +97,7 @@
     <p class="section-body">
       Probabilistic latency is great for integration tests, but for unit tests you need
       the timeout to fire <em>every time</em>. Mock <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">Math.random</code> to return a
-      value close to 1 — this maps to the high end of the lognormal distribution, generating
+      value close to 1 &mdash; this maps to the high end of the lognormal distribution, generating
       a very long delay that reliably exceeds your timeout.
     </p>
     <div class="codeblock"><pre><span class="fn">it</span>(<span class="str">'rejects with timeout error on slow response'</span>, <span class="kw">async</span> () =&gt; {
@@ -198,29 +198,29 @@
     <h2 class="section-title">Timeout strategy comparison</h2>
     <p class="section-body">
       Not all timeout strategies are equal. Understanding the tradeoffs helps you choose
-      what to implement — and what to test.
+      what to implement &mdash; and what to test.
     </p>
     <table class="cmp-table">
       <tr><th>strategy</th><th>how it works</th><th>tradeoffs</th></tr>
       <tr>
         <td>fixed timeout</td>
         <td>reject after N ms, same for every call</td>
-        <td><span class="partial">simple</span> — too short: healthy requests fail; too long: users wait</td>
+        <td><span class="partial">simple</span> &mdash; too short: healthy requests fail; too long: users wait</td>
       </tr>
       <tr>
         <td>dynamic timeout</td>
         <td>timeout = p99 + buffer, measured from live metrics</td>
-        <td><span class="yes">adapts to load</span> — more complex, needs metrics feedback loop</td>
+        <td><span class="yes">adapts to load</span> &mdash; more complex, needs metrics feedback loop</td>
       </tr>
       <tr>
         <td>hedged request</td>
         <td>after p50 ms, send a second request; use whichever returns first</td>
-        <td><span class="yes">eliminates tail latency</span> — doubles load on server, use carefully</td>
+        <td><span class="yes">eliminates tail latency</span> &mdash; doubles load on server, use carefully</td>
       </tr>
       <tr>
         <td>deadline propagation</td>
         <td>pass a remaining deadline down the call stack</td>
-        <td><span class="yes">prevents cascading waits</span> — requires ctx threading through all calls</td>
+        <td><span class="yes">prevents cascading waits</span> &mdash; requires ctx threading through all calls</td>
       </tr>
     </table>
     <div class="callout tip">
@@ -237,16 +237,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

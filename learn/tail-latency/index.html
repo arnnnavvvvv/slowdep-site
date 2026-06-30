@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tail latency — slowdep learn</title>
+<title>Tail latency &mdash; slowdep learn</title>
 <meta name="description" content="Why the 99th percentile matters more than the average, how tail latency amplifies across fan-out calls, and how slowdep helps you test for it.">
 <link rel="canonical" href="https://slowdeps.site/learn/tail-latency/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -41,8 +41,8 @@
   <div class="section">
     <div class="section-eyebrow">definition</div>
     <h2 class="section-title">What tail latency is</h2>
-    <p class="section-body">Tail latency refers to the slowest fraction of requests in a latency distribution. The "tail" is the long right side of a histogram — most requests finish quickly, but a small percentage take much longer. p99 tail latency means the slowest 1% of requests. p999 means the slowest 0.1%.</p>
-    <p class="section-body" style="margin-top:0.6rem;">At 1,000 requests per second, p99 tail latency affects 10 requests every second. At 10,000 req/s, 100 requests per second hit the tail. These aren't edge cases — they're a constant stream of degraded user experiences.</p>
+    <p class="section-body">Tail latency refers to the slowest fraction of requests in a latency distribution. The "tail" is the long right side of a histogram &mdash; most requests finish quickly, but a small percentage take much longer. p99 tail latency means the slowest 1% of requests. p999 means the slowest 0.1%.</p>
+    <p class="section-body" style="margin-top:0.6rem;">At 1,000 requests per second, p99 tail latency affects 10 requests every second. At 10,000 req/s, 100 requests per second hit the tail. These aren't edge cases &mdash; they're a constant stream of degraded user experiences.</p>
   </div>
 
   <div class="section">
@@ -61,7 +61,7 @@ p99 = <span class="num">10000</span>ms     <span class="cm">// 1% of users wait 
   <div class="section">
     <div class="section-eyebrow">fan-out amplification</div>
     <h2 class="section-title">How tail latency spreads across your system</h2>
-    <p class="section-body">When a request fans out to multiple downstream services in parallel, the overall latency is the <strong>maximum</strong> of all the downstream latencies — you have to wait for the slowest one. This amplifies tail latency dramatically.</p>
+    <p class="section-body">When a request fans out to multiple downstream services in parallel, the overall latency is the <strong>maximum</strong> of all the downstream latencies &mdash; you have to wait for the slowest one. This amplifies tail latency dramatically.</p>
     <div class="codeblock"><pre><span class="cm">// Each downstream call has 1% chance of hitting p99 tail</span>
 <span class="cm">// Probability that all N calls are fast:</span>
 P(all fast) = 0.99 ^ N
@@ -72,17 +72,17 @@ P(any slow) = 1 - 0.99 ^ N
 <span class="cm">// For N = 10:  1 - 0.99^10  = 9.6%  of requests see tail latency</span>
 <span class="cm">// For N = 50:  1 - 0.99^50  = 39.5%</span>
 <span class="cm">// For N = 100: 1 - 0.99^100 = 63.4%</span></pre></div>
-    <p class="section-body" style="margin-top:1rem;">A page that makes 100 parallel API calls — common in microservice architectures — will hit the tail latency of at least one dependency on 63% of requests, even though each individual service has a 1% tail.</p>
+    <p class="section-body" style="margin-top:1rem;">A page that makes 100 parallel API calls &mdash; common in microservice architectures &mdash; will hit the tail latency of at least one dependency on 63% of requests, even though each individual service has a 1% tail.</p>
   </div>
 
   <div class="section">
     <div class="section-eyebrow">availability</div>
     <h2 class="section-title">Slow is the new down</h2>
-    <p class="section-body">From a user's perspective, a request that takes 10 seconds is functionally equivalent to a request that failed. Most applications implement timeouts to avoid hanging forever — which means tail-latency events convert directly into errors.</p>
-    <p class="section-body" style="margin-top:0.6rem;">If your timeout is 5 seconds and your p99 is 4.9 seconds, you have essentially zero margin. Any increase in p99 — a momentary GC pause, a noisy neighbour, a cold cache — pushes responses past the timeout and turns them into 500 errors.</p>
+    <p class="section-body">From a user's perspective, a request that takes 10 seconds is functionally equivalent to a request that failed. Most applications implement timeouts to avoid hanging forever &mdash; which means tail-latency events convert directly into errors.</p>
+    <p class="section-body" style="margin-top:0.6rem;">If your timeout is 5 seconds and your p99 is 4.9 seconds, you have essentially zero margin. Any increase in p99 &mdash; a momentary GC pause, a noisy neighbour, a cold cache &mdash; pushes responses past the timeout and turns them into 500 errors.</p>
     <div class="callout warn">
       <div class="callout-title">Timeout calibration</div>
-      <p>Your timeout should be set to roughly p999 of the service you're calling — covering 99.9% of legitimate responses while cutting off true hangs. Calibrating without realistic latency data means guessing.</p>
+      <p>Your timeout should be set to roughly p999 of the service you're calling &mdash; covering 99.9% of legitimate responses while cutting off true hangs. Calibrating without realistic latency data means guessing.</p>
     </div>
   </div>
 
@@ -134,16 +134,16 @@ P(any slow) = 1 - 0.99 ^ N
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

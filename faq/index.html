@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FAQ — slowdep</title>
-<meta name="description" content="Common questions about slowdep — installation, TypeScript support, testing patterns, and more.">
+<title>FAQ &mdash; slowdep</title>
+<meta name="description" content="Common questions about slowdep &mdash; installation, TypeScript support, testing patterns, and more.">
 <link rel="canonical" href="https://slowdeps.site/faq/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -33,7 +33,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>FAQ</div>
     <h1 class="page-title">Frequently asked questions</h1>
-    <p class="page-desc">Common questions about slowdep — installation, TypeScript support, testing patterns, and more.</p>
+    <p class="page-desc">Common questions about slowdep &mdash; installation, TypeScript support, testing patterns, and more.</p>
   </div>
 </div>
 
@@ -44,12 +44,12 @@
 
     <div class="faq-item">
       <div class="faq-q">What is slowdep?</div>
-      <div class="faq-a">slowdep is a zero-dependency Node.js library that wraps async functions with realistic lognormal latency. Instead of adding a flat <code>setTimeout</code> delay, it models how real production dependencies like Postgres, Redis, Stripe, and OpenAI actually behave — fast most of the time, with occasional long-tail spikes.</div>
+      <div class="faq-a">slowdep is a zero-dependency Node.js library that wraps async functions with realistic lognormal latency. Instead of adding a flat <code>setTimeout</code> delay, it models how real production dependencies like Postgres, Redis, Stripe, and OpenAI actually behave &mdash; fast most of the time, with occasional long-tail spikes.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Why not just use setTimeout?</div>
-      <div class="faq-a"><code>setTimeout(fn, 100)</code> makes every call take exactly 100 ms. Real services never behave that way. A Postgres query might take 4 ms 95% of the time and 300 ms 1% of the time. That long tail is where bugs live — timeout misconfiguration, missing retries, cascade failures. A flat delay hides all of that. slowdep uses a lognormal distribution to produce the same kind of variance you see in production.</div>
+      <div class="faq-a"><code>setTimeout(fn, 100)</code> makes every call take exactly 100 ms. Real services never behave that way. A Postgres query might take 4 ms 95% of the time and 300 ms 1% of the time. That long tail is where bugs live &mdash; timeout misconfiguration, missing retries, cascade failures. A flat delay hides all of that. slowdep uses a lognormal distribution to produce the same kind of variance you see in production.</div>
     </div>
 
     <div class="faq-item">
@@ -59,7 +59,7 @@
 
     <div class="faq-item">
       <div class="faq-q">Is it safe to accidentally leave slowdep active in production?</div>
-      <div class="faq-a">It won't corrupt data or crash your service, but it will add latency to every wrapped call, which would degrade production performance. The conditional-wrap pattern ensures the package has no effect in production — and if you use dynamic import, production bundles won't include it at all. Always gate on an environment variable or <code>NODE_ENV</code>.</div>
+      <div class="faq-a">It won't corrupt data or crash your service, but it will add latency to every wrapped call, which would degrade production performance. The conditional-wrap pattern ensures the package has no effect in production &mdash; and if you use dynamic import, production bundles won't include it at all. Always gate on an environment variable or <code>NODE_ENV</code>.</div>
     </div>
 
     <div class="faq-item">
@@ -109,7 +109,7 @@
 
     <div class="faq-item">
       <div class="faq-q">What happens when the error rate fires?</div>
-      <div class="faq-a">The wrapped function rejects with a plain <code>Error</code> object. The error message is <code>"Simulated transient error"</code>. The original function is not called — the rejection happens before the underlying function runs. This means your error handlers and retry logic need to handle it just like they would a real transient failure.</div>
+      <div class="faq-a">The wrapped function rejects with a plain <code>Error</code> object. The error message is <code>"Simulated transient error"</code>. The original function is not called &mdash; the rejection happens before the underlying function runs. This means your error handlers and retry logic need to handle it just like they would a real transient failure.</div>
     </div>
 
     <div class="faq-item">
@@ -134,7 +134,7 @@
 
     <div class="faq-item">
       <div class="faq-q">Can I assert that a specific latency was applied?</div>
-      <div class="faq-a">You can, but it's usually the wrong test. Instead of asserting "this call took 50 ms", assert that your code behaved correctly under that latency — the timeout fired, the retry was attempted, the fallback was used. That's the behavior slowdep exists to surface. If you must assert timing, mock <code>Math.random</code> to a fixed value, record <code>Date.now()</code> before and after, and compare. The exact ms will be consistent given a fixed random seed.</div>
+      <div class="faq-a">You can, but it's usually the wrong test. Instead of asserting "this call took 50 ms", assert that your code behaved correctly under that latency &mdash; the timeout fired, the retry was attempted, the fallback was used. That's the behavior slowdep exists to surface. If you must assert timing, mock <code>Math.random</code> to a fixed value, record <code>Date.now()</code> before and after, and compare. The exact ms will be consistent given a fixed random seed.</div>
     </div>
   </div>
 
@@ -144,17 +144,17 @@
 
     <div class="faq-item">
       <div class="faq-q">How does slowdep compare to setTimeout for testing?</div>
-      <div class="faq-a"><code>setTimeout</code> adds a flat, identical delay to every call. slowdep adds variable, lognormally-distributed delays — fast most of the time, occasionally slow, with a configurable error rate. The practical difference: <code>setTimeout</code> will never reveal a timeout bug that only fires at p99; slowdep will. For any code that interacts with external dependencies, slowdep gives more confidence than a flat delay.</div>
+      <div class="faq-a"><code>setTimeout</code> adds a flat, identical delay to every call. slowdep adds variable, lognormally-distributed delays &mdash; fast most of the time, occasionally slow, with a configurable error rate. The practical difference: <code>setTimeout</code> will never reveal a timeout bug that only fires at p99; slowdep will. For any code that interacts with external dependencies, slowdep gives more confidence than a flat delay.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">How does slowdep compare to Toxiproxy?</div>
-      <div class="faq-a">Toxiproxy is a network-level proxy that sits between your app and a real dependency. It requires running a separate process and configuring network routes. slowdep is a JavaScript-level wrapper — no extra process, no network config, and it works with mocked or real clients equally. Toxiproxy is better for integration tests that talk to real services. slowdep is better for unit and component tests that use mocked clients.</div>
+      <div class="faq-a">Toxiproxy is a network-level proxy that sits between your app and a real dependency. It requires running a separate process and configuring network routes. slowdep is a JavaScript-level wrapper &mdash; no extra process, no network config, and it works with mocked or real clients equally. Toxiproxy is better for integration tests that talk to real services. slowdep is better for unit and component tests that use mocked clients.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">How does slowdep compare to MSW (Mock Service Worker)?</div>
-      <div class="faq-a">MSW intercepts HTTP requests at the network level and lets you define mock responses. It's excellent for mocking REST and GraphQL APIs. slowdep operates at the function level and adds latency to any async function — not just HTTP calls. The two tools are complementary: use MSW to define what a mocked API returns, and wrap the fetch/axios call with slowdep to make it respond with realistic timing.</div>
+      <div class="faq-a">MSW intercepts HTTP requests at the network level and lets you define mock responses. It's excellent for mocking REST and GraphQL APIs. slowdep operates at the function level and adds latency to any async function &mdash; not just HTTP calls. The two tools are complementary: use MSW to define what a mocked API returns, and wrap the fetch/axios call with slowdep to make it respond with realistic timing.</div>
     </div>
   </div>
 </main>
@@ -165,16 +165,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

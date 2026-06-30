@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>slowdep + MongoDB — integration</title>
+<title>slowdep + MongoDB &mdash; integration</title>
 <meta name="description" content="Add realistic MongoDB latency (p50: 8ms, p99: 250ms) to queries and mutations in tests and local development.">
 <link rel="canonical" href="https://slowdeps.site/integrations/mongodb/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -33,7 +33,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>MongoDB</div>
     <h1 class="page-title">slowdep + MongoDB</h1>
-    <p class="page-desc">Add realistic MongoDB latency (p50: 8ms, p99: 250ms) to queries and mutations in tests and local development. MongoDB's document model encourages large reads — latency tests expose the cost.</p>
+    <p class="page-desc">Add realistic MongoDB latency (p50: 8ms, p99: 250ms) to queries and mutations in tests and local development. MongoDB's document model encourages large reads &mdash; latency tests expose the cost.</p>
   </div>
 </div>
 
@@ -93,7 +93,7 @@
   <div class="section">
     <div class="section-eyebrow">Wrapping a client</div>
     <h2 class="section-title">Wrap an entire collection with withLatencyAll</h2>
-    <p class="section-body">For comprehensive coverage, wrap the entire collection object. Every method — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">find</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">aggregate</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">bulkWrite</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">deleteOne</code> — will experience realistic latency.</p>
+    <p class="section-body">For comprehensive coverage, wrap the entire collection object. Every method &mdash; <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">find</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">aggregate</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">bulkWrite</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">deleteOne</code> &mdash; will experience realistic latency.</p>
     <div class="codeblock" style="margin-top:1.25rem;">
 <pre><span class="kw">import</span> { MongoClient, Collection } <span class="kw">from</span> <span class="str">'mongodb'</span>;
 <span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
@@ -132,7 +132,7 @@
 <span class="cm">// Access the native MongoDB collection through Mongoose's connection</span>
 <span class="kw">const</span> nativeUsers = mongoose.connection.db.<span class="fn">collection</span>(<span class="str">'users'</span>);
 
-<span class="cm">// Wrap the native collection — works identically to the native driver</span>
+<span class="cm">// Wrap the native collection &mdash; works identically to the native driver</span>
 <span class="kw">const</span> <span class="acc">slowUsers</span> = <span class="fn">withLatencyAll</span>(nativeUsers, <span class="str">'mongodb'</span>);
 
 <span class="cm">// Use the slow native collection for tests</span>
@@ -153,7 +153,7 @@
     </div>
     <div class="callout warn" style="margin-top:1.25rem;">
       <div class="callout-title">Why not wrap Mongoose models directly?</div>
-      <p>Mongoose model methods like <code>User.findById()</code> return a Query object, not a Promise. The Promise is only created when you call <code>.exec()</code> or <code>await</code> it. <code>withLatency</code> wraps the function call itself — wrapping <code>User.findById</code> would add latency before the Query is built, not before the DB round-trip. Wrap <code>.exec()</code> or use the native collection instead.</p>
+      <p>Mongoose model methods like <code>User.findById()</code> return a Query object, not a Promise. The Promise is only created when you call <code>.exec()</code> or <code>await</code> it. <code>withLatency</code> wraps the function call itself &mdash; wrapping <code>User.findById</code> would add latency before the Query is built, not before the DB round-trip. Wrap <code>.exec()</code> or use the native collection instead.</p>
     </div>
   </div>
 
@@ -170,7 +170,7 @@
 <span class="kw">import</span> { getOrderById } <span class="kw">from</span> <span class="str">'../src/orders'</span>;
 
 <span class="fn">test</span>(<span class="str">'getOrderById times out on slow collection scan'</span>, <span class="kw">async</span> () => {
-  <span class="cm">// Simulate a missing index — query takes p99 time</span>
+  <span class="cm">// Simulate a missing index &mdash; query takes p99 time</span>
   <span class="kw">const</span> slowFindOne = <span class="fn">withLatency</span>(
     jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ _id: <span class="str">'o1'</span>, status: <span class="str">'pending'</span> }),
     { p50: <span class="num">150</span>, p99: <span class="num">600</span> }  <span class="cm">// collection scan latency</span>
@@ -196,7 +196,7 @@
   <span class="kw">const</span> result = <span class="kw">await</span> slowBulkWrite(docs);
   <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
 
-  <span class="cm">// Bulk write is one round-trip — latency applies once, not per document</span>
+  <span class="cm">// Bulk write is one round-trip &mdash; latency applies once, not per document</span>
   <span class="fn">expect</span>(result.insertedCount).<span class="fn">toBe</span>(<span class="num">50</span>);
   <span class="fn">expect</span>(elapsed).<span class="fn">toBeLessThan</span>(<span class="num">1000</span>);  <span class="cm">// well within SLA</span>
 });
@@ -230,12 +230,12 @@
     <h2 class="section-title">Scenarios this integration helps you verify</h2>
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
-        <li><strong>Missing index detection</strong> — simulate 250ms p99 to reveal queries that would be fast on small local datasets but slow on large production collections</li>
-        <li><strong>Aggregation pipeline timeout</strong> — complex <code>$lookup</code> and <code>$group</code> stages can be slow; verify your service handles them within budget</li>
-        <li><strong>Write concern latency</strong> — writes with <code>w: "majority"</code> wait for replica acknowledgement; simulate the extra round-trip</li>
-        <li><strong>Change stream lag</strong> — event-driven architectures using change streams need to account for the latency between the write and the stream event</li>
-        <li><strong>Cursor exhaustion</strong> — large <code>find().toArray()</code> calls are expensive; realistic latency exposes code that should use pagination</li>
-        <li><strong>Concurrent session handling</strong> — MongoDB multi-document transactions add latency; verify transaction timeout settings</li>
+        <li><strong>Missing index detection</strong> &mdash; simulate 250ms p99 to reveal queries that would be fast on small local datasets but slow on large production collections</li>
+        <li><strong>Aggregation pipeline timeout</strong> &mdash; complex <code>$lookup</code> and <code>$group</code> stages can be slow; verify your service handles them within budget</li>
+        <li><strong>Write concern latency</strong> &mdash; writes with <code>w: "majority"</code> wait for replica acknowledgement; simulate the extra round-trip</li>
+        <li><strong>Change stream lag</strong> &mdash; event-driven architectures using change streams need to account for the latency between the write and the stream event</li>
+        <li><strong>Cursor exhaustion</strong> &mdash; large <code>find().toArray()</code> calls are expensive; realistic latency exposes code that should use pagination</li>
+        <li><strong>Concurrent session handling</strong> &mdash; MongoDB multi-document transactions add latency; verify transaction timeout settings</li>
       </ul>
     </div>
   </div>
@@ -257,7 +257,7 @@
 
 <span class="kw">const</span> users: Collection&lt;User&gt; = client.<span class="fn">db</span>(<span class="str">'myapp'</span>).<span class="fn">collection</span>&lt;User&gt;(<span class="str">'users'</span>);
 
-<span class="cm">// Collection&lt;User&gt; type preserved — full IntelliSense on slowUsers</span>
+<span class="cm">// Collection&lt;User&gt; type preserved &mdash; full IntelliSense on slowUsers</span>
 <span class="kw">const</span> <span class="acc">slowUsers</span>: Collection&lt;User&gt; = <span class="fn">withLatencyAll</span>(users, <span class="str">'mongodb'</span>);
 
 <span class="cm">// Return type is inferred: Promise&lt;User | null&gt;</span>
@@ -274,16 +274,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.885 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
 </body>

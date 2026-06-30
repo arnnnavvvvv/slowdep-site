@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>slowdep + Stripe — integration</title>
+<title>slowdep + Stripe &mdash; integration</title>
 <meta name="description" content="Simulate realistic Stripe API latency (p50: 200ms, p99: 2s) in tests. Verify your checkout flow handles slow payment processing gracefully.">
 <link rel="canonical" href="https://slowdeps.site/integrations/stripe/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -98,7 +98,7 @@
   <div class="section">
     <div class="section-eyebrow">Wrapping a client</div>
     <h2 class="section-title">Wrap an entire sub-resource with withLatencyAll</h2>
-    <p class="section-body">Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on a specific sub-resource to wrap all its methods at once — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">create</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">retrieve</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">update</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">cancel</code>.</p>
+    <p class="section-body">Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on a specific sub-resource to wrap all its methods at once &mdash; <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">create</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">retrieve</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">update</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">cancel</code>.</p>
     <div class="codeblock" style="margin-top:1.25rem;">
 <pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
 <span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
@@ -124,7 +124,7 @@
     automatic_payment_methods: { enabled: <span class="kw">true</span> }
   });
 
-  <span class="cm">// Confirm the intent (~200ms) — in a real flow this happens client-side</span>
+  <span class="cm">// Confirm the intent (~200ms) &mdash; in a real flow this happens client-side</span>
   <span class="kw">const</span> confirmed = <span class="kw">await</span> <span class="acc">slowPaymentIntents</span>.<span class="fn">retrieve</span>(intent.id);
   <span class="kw">return</span> confirmed;
 }
@@ -156,7 +156,7 @@
 
   <span class="fn">fireEvent</span>.<span class="fn">click</span>(<span class="fn">screen</span>.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: /buy now/i }));
 
-  <span class="cm">// Button must disable immediately on click — no double-charging</span>
+  <span class="cm">// Button must disable immediately on click &mdash; no double-charging</span>
   <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByRole</span>(<span class="str">'button'</span>)).<span class="fn">toBeDisabled</span>();
   <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByText</span>(<span class="str">/Processing/i</span>)).<span class="fn">toBeInTheDocument</span>();
 
@@ -182,7 +182,7 @@
     })
   ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'PaymentTimeoutError'</span>);
 
-  <span class="cm">// Verify idempotency key was used — same key means no duplicate charge</span>
+  <span class="cm">// Verify idempotency key was used &mdash; same key means no duplicate charge</span>
   <span class="fn">expect</span>(mockCreate).<span class="fn">toHaveBeenCalledWith</span>(
     <span class="fn">expect</span>.<span class="fn">objectContaining</span>({
       metadata: <span class="fn">expect</span>.<span class="fn">objectContaining</span>({ idempotencyKey: <span class="fn">expect</span>.<span class="fn">any</span>(String) })
@@ -222,14 +222,14 @@
   <div class="section">
     <div class="section-eyebrow">Individual wrapping</div>
     <h2 class="section-title">Wrap subscriptions and refunds</h2>
-    <p class="section-body">Every Stripe sub-resource follows the same pattern. Wrap only what you use — refunds may have different latency characteristics to model.</p>
+    <p class="section-body">Every Stripe sub-resource follows the same pattern. Wrap only what you use &mdash; refunds may have different latency characteristics to model.</p>
     <div class="codeblock" style="margin-top:1.25rem;">
 <pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
 <span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
 <span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
 
-<span class="cm">// Subscriptions — use stripe preset</span>
+<span class="cm">// Subscriptions &mdash; use stripe preset</span>
 <span class="kw">const</span> <span class="acc">slowCreateSub</span> = <span class="fn">withLatency</span>(
   stripe.subscriptions.create.<span class="fn">bind</span>(stripe.subscriptions),
   <span class="str">'stripe'</span>
@@ -261,7 +261,7 @@
   <!-- PRODUCTION SAFETY -->
   <div class="section">
     <div class="section-eyebrow">Production safety</div>
-    <h2 class="section-title">Gate on environment — never slow real payments</h2>
+    <h2 class="section-title">Gate on environment &mdash; never slow real payments</h2>
     <div class="codeblock" style="margin-top:1rem;">
 <pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
 <span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
@@ -288,12 +288,12 @@
     <h2 class="section-title">Scenarios this integration helps you verify</h2>
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
-        <li><strong>Button disable on click</strong> — at p50 of 200ms, users will notice a non-disabled button and may click twice. Always disable immediately on first click.</li>
-        <li><strong>Idempotency key handling</strong> — on timeout, your retry must use the same idempotency key to avoid double-charging</li>
-        <li><strong>Card decline UX</strong> — the 0.2% error rate also models card declines; verify your error state is user-friendly, not just "Error"</li>
-        <li><strong>Subscription creation latency</strong> — subscription creation with a trial period involves multiple internal Stripe operations; budget for 500ms+</li>
-        <li><strong>Webhook 200 ack before processing</strong> — Stripe retries webhooks if you don't ack within 30s; always ack immediately and process asynchronously</li>
-        <li><strong>Checkout session expiry</strong> — if payment is slow and the session expires (30 minutes), does your UI handle the redirect gracefully?</li>
+        <li><strong>Button disable on click</strong> &mdash; at p50 of 200ms, users will notice a non-disabled button and may click twice. Always disable immediately on first click.</li>
+        <li><strong>Idempotency key handling</strong> &mdash; on timeout, your retry must use the same idempotency key to avoid double-charging</li>
+        <li><strong>Card decline UX</strong> &mdash; the 0.2% error rate also models card declines; verify your error state is user-friendly, not just "Error"</li>
+        <li><strong>Subscription creation latency</strong> &mdash; subscription creation with a trial period involves multiple internal Stripe operations; budget for 500ms+</li>
+        <li><strong>Webhook 200 ack before processing</strong> &mdash; Stripe retries webhooks if you don't ack within 30s; always ack immediately and process asynchronously</li>
+        <li><strong>Checkout session expiry</strong> &mdash; if payment is slow and the session expires (30 minutes), does your UI handle the redirect gracefully?</li>
       </ul>
     </div>
   </div>
@@ -326,7 +326,7 @@
   });
 }
 
-<span class="cm">// Fully typed — amount, currency, status all have correct types</span>
+<span class="cm">// Fully typed &mdash; amount, currency, status all have correct types</span>
 <span class="kw">const</span> intent: Stripe.PaymentIntent = <span class="kw">await</span> <span class="fn">createIntent</span>(<span class="num">4999</span>);
 console.<span class="fn">log</span>(intent.status);   <span class="cm">// 'requires_payment_method' | 'processing' | etc.</span>
 </pre>
@@ -341,16 +341,16 @@ console.<span class="fn">log</span>(intent.status);   <span class="cm">// 'requi
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
 </body>

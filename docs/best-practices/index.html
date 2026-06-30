@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Best practices — slowdep docs</title>
+<title>Best practices &mdash; slowdep docs</title>
 <meta name="description" content="How to get the most out of slowdep in testing, local development, and CI.">
 <link rel="canonical" href="https://slowdeps.site/docs/best-practices/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -45,7 +45,7 @@
 
     <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 
-<span class="cm">// The conditional wrap pattern — zero cost in production</span>
+<span class="cm">// The conditional wrap pattern &mdash; zero cost in production</span>
 <span class="kw">const</span> <span class="acc">queryUser</span> = process.env.<span class="acc">NODE_ENV</span> !== <span class="str">'production'</span>
   ? <span class="fn">withLatency</span>(dbQueryUser, <span class="str">'postgres'</span>)
   : dbQueryUser</pre></div>
@@ -56,10 +56,10 @@
   <div class="section">
     <div class="section-eyebrow">Architecture</div>
     <h2 class="section-title">Wrap at the boundary</h2>
-    <p class="section-body">Wrap the function that directly calls the external service — not a function several layers up the call stack. Wrapping too high obscures which dependency is slow and makes it impossible to give different services different latency profiles.</p>
+    <p class="section-body">Wrap the function that directly calls the external service &mdash; not a function several layers up the call stack. Wrapping too high obscures which dependency is slow and makes it impossible to give different services different latency profiles.</p>
 
     <div class="callout warn">
-      <div class="callout-title">Too high — wraps everything at once</div>
+      <div class="callout-title">Too high &mdash; wraps everything at once</div>
       <p>Wrapping <code>processOrder</code> mixes together database, payment, and email latency into one opaque number. You can't tune them individually.</p>
     </div>
 
@@ -67,7 +67,7 @@
 <span class="kw">const</span> <span class="acc">slowProcessOrder</span> = <span class="fn">withLatency</span>(processOrder, <span class="str">'http'</span>)</pre></div>
 
     <div class="callout tip" style="margin-top:1rem;">
-      <div class="callout-title">At the boundary — each dependency independently</div>
+      <div class="callout-title">At the boundary &mdash; each dependency independently</div>
       <p>Wrap each client or adapter function with the preset that matches the real service.</p>
     </div>
 
@@ -80,10 +80,10 @@
   <div class="section">
     <div class="section-eyebrow">Testing resilience</div>
     <h2 class="section-title">Test the failure path</h2>
-    <p class="section-body">The most valuable thing slowdep does is let you test code paths that are hard to trigger against a real service. Set <code>errorRate</code> high temporarily — even to 0.5 — to force your retry and fallback logic to execute on every test run.</p>
+    <p class="section-body">The most valuable thing slowdep does is let you test code paths that are hard to trigger against a real service. Set <code>errorRate</code> high temporarily &mdash; even to 0.5 &mdash; to force your retry and fallback logic to execute on every test run.</p>
 
     <div class="codeblock"><pre><span class="cm">// In a specific resilience test: set errorRate to 50%</span>
-<span class="cm">// Every other call fails — retry logic runs every time</span>
+<span class="cm">// Every other call fails &mdash; retry logic runs every time</span>
 <span class="kw">const</span> <span class="acc">flakyCharge</span> = <span class="fn">withLatency</span>(createCharge, {
   p50: <span class="num">200</span>,
   p99: <span class="num">2000</span>,
@@ -115,7 +115,7 @@ test(<span class="str">'retries and eventually succeeds'</span>, <span class="kw
 <span class="kw">export default</span> {
   testMatch: [<span class="str">'**/*.integration.test.ts'</span>],
   testEnvironmentOptions: {
-    <span class="cm">// No SLOWDEP_BYPASS — latency is active</span>
+    <span class="cm">// No SLOWDEP_BYPASS &mdash; latency is active</span>
     env: { NODE_ENV: <span class="str">'test'</span> }
   },
   testTimeout: <span class="num">30000</span> <span class="cm">// higher timeout for realistic latency</span>
@@ -125,7 +125,7 @@ test(<span class="str">'retries and eventually succeeds'</span>, <span class="kw
   <div class="section">
     <div class="section-eyebrow">Scope</div>
     <h2 class="section-title">Don't use slowdep as a load testing tool</h2>
-    <p class="section-body">slowdep delays individual calls, one at a time. It is not a load generator, a traffic simulation tool, or a concurrency stress tester. It answers the question "what happens when a single call takes longer than expected?" — not "what happens when 1,000 users hit my service simultaneously?"</p>
+    <p class="section-body">slowdep delays individual calls, one at a time. It is not a load generator, a traffic simulation tool, or a concurrency stress tester. It answers the question "what happens when a single call takes longer than expected?" &mdash; not "what happens when 1,000 users hit my service simultaneously?"</p>
     <p class="section-body">For load testing and concurrency simulation, use dedicated tools like k6, Artillery, or wrk. slowdep and load testing are complementary: use slowdep to validate your resilience patterns are correct, then use a load tester to validate they scale.</p>
 
     <div class="callout">
@@ -137,7 +137,7 @@ test(<span class="str">'retries and eventually succeeds'</span>, <span class="kw
   <div class="section">
     <div class="section-eyebrow">Configuration</div>
     <h2 class="section-title">Pick p99 carefully</h2>
-    <p class="section-body">The 99th percentile is the boundary between "normal variance" and "something is wrong." If your timeout is shorter than the p99 of a dependency, 1% of calls will time out even during normal operation. In a service processing 100 requests per second, that's one timeout per second — a constant stream of errors.</p>
+    <p class="section-body">The 99th percentile is the boundary between "normal variance" and "something is wrong." If your timeout is shorter than the p99 of a dependency, 1% of calls will time out even during normal operation. In a service processing 100 requests per second, that's one timeout per second &mdash; a constant stream of errors.</p>
 
     <div class="codeblock"><pre><span class="cm">// Bad: timeout of 100ms with postgres p99 of 200ms</span>
 <span class="cm">// 1% of calls will time out in normal operation</span>
@@ -157,16 +157,16 @@ test(<span class="str">'retries and eventually succeeds'</span>, <span class="kw
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

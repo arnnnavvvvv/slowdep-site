@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>withLatency — slowdep API</title>
-<meta name="description" content="Full API reference for the withLatency function — parameters, return type, TypeScript signature, and examples.">
+<title>withLatency &mdash; slowdep API</title>
+<meta name="description" content="Full API reference for the withLatency function &mdash; parameters, return type, TypeScript signature, and examples.">
 <link rel="canonical" href="https://slowdeps.site/docs/withLatency/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -33,7 +33,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>withLatency</div>
     <h1 class="page-title">withLatency(fn, profile)</h1>
-    <p class="page-desc">Full API reference for the withLatency function — parameters, return type, TypeScript signature, and examples.</p>
+    <p class="page-desc">Full API reference for the withLatency function &mdash; parameters, return type, TypeScript signature, and examples.</p>
   </div>
 </div>
 
@@ -60,13 +60,13 @@
       <tr>
         <td class="param-name">fn</td>
         <td class="param-type">(...args: any[]) =&gt; Promise&lt;any&gt;</td>
-        <td class="param-default">—</td>
+        <td class="param-default">&mdash;</td>
         <td class="param-desc">The async function to wrap. Must return a Promise. The wrapped function will have the same signature.</td>
       </tr>
       <tr>
         <td class="param-name">profile</td>
         <td class="param-type">LatencyPreset | LatencyOptions</td>
-        <td class="param-default">—</td>
+        <td class="param-default">&mdash;</td>
         <td class="param-desc">Either a preset string name (<code>'postgres'</code>, <code>'redis'</code>, etc.) or a custom <code>LatencyOptions</code> object with explicit p50/p99 values.</td>
       </tr>
     </table>
@@ -82,13 +82,13 @@
       <tr>
         <td class="param-name">p50</td>
         <td class="param-type">number</td>
-        <td class="param-default">—</td>
+        <td class="param-default">&mdash;</td>
         <td class="param-desc">Median latency in milliseconds. Half of sampled delays will be below this value. Required.</td>
       </tr>
       <tr>
         <td class="param-name">p99</td>
         <td class="param-type">number</td>
-        <td class="param-default">—</td>
+        <td class="param-default">&mdash;</td>
         <td class="param-desc">99th-percentile latency in milliseconds. Used alongside p50 to fit the lognormal distribution. Must be greater than p50. Required.</td>
       </tr>
       <tr>
@@ -114,7 +114,7 @@
       </ol>
     </div>
 
-    <p class="section-body" style="margin-top:0.75rem;">The returned function is a plain async function — not a Proxy. It can be called, passed around, bound to objects, and destructured exactly like a regular function.</p>
+    <p class="section-body" style="margin-top:0.75rem;">The returned function is a plain async function &mdash; not a Proxy. It can be called, passed around, bound to objects, and destructured exactly like a regular function.</p>
   </div>
 
   <div class="section">
@@ -158,7 +158,7 @@ console.<span class="fn">log</span>(user.name)</pre></div>
     <div id="wl-errrate" class="code-panel">
       <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 
-<span class="cm">// 2% of calls will reject — test your retry logic</span>
+<span class="cm">// 2% of calls will reject &mdash; test your retry logic</span>
 <span class="kw">const</span> <span class="acc">slowCharge</span> = <span class="fn">withLatency</span>(createCharge, {
   p50: <span class="num">200</span>,
   p99: <span class="num">2000</span>,
@@ -188,7 +188,7 @@ console.<span class="fn">log</span>(user.name)</pre></div>
 <span class="kw">const</span> preset: <span class="acc">LatencyPreset</span> = <span class="str">'redis'</span>
 <span class="kw">const</span> <span class="acc">slowGet</span> = <span class="fn">withLatency</span>(cacheGet, preset)
 
-<span class="cm">// Return type is preserved — same as original function</span>
+<span class="cm">// Return type is preserved &mdash; same as original function</span>
 <span class="kw">const</span> result: <span class="acc">Awaited</span>&lt;<span class="kw">ReturnType</span>&lt;<span class="kw">typeof</span> getUser&gt;&gt; = <span class="kw">await</span> <span class="acc">slowGetUser</span>(<span class="num">1</span>)</pre></div>
     </div>
   </div>
@@ -237,16 +237,16 @@ console.<span class="fn">log</span>(user.name)</pre></div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 
 <script>

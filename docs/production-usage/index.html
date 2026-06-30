@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Production usage — slowdep docs</title>
+<title>Production usage &mdash; slowdep docs</title>
 <meta name="description" content="Patterns for safely enabling slowdep only in non-production environments.">
 <link rel="canonical" href="https://slowdeps.site/docs/production-usage/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -49,7 +49,7 @@
   <span class="kw">return</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id])
 }
 
-<span class="cm">// Zero overhead in production — returns queryUser directly</span>
+<span class="cm">// Zero overhead in production &mdash; returns queryUser directly</span>
 <span class="kw">export const</span> <span class="acc">getUser</span> = process.env.<span class="acc">NODE_ENV</span> !== <span class="str">'production'</span>
   ? <span class="fn">withLatency</span>(queryUser, <span class="str">'postgres'</span>)
   : queryUser</pre></div>
@@ -58,7 +58,7 @@
 
     <div class="callout warn">
       <div class="callout-title">NODE_ENV must be set correctly</div>
-      <p>Most deployment platforms set <code>NODE_ENV=production</code> automatically. If yours does not, set it explicitly in your deployment configuration. Never rely on the default — if <code>NODE_ENV</code> is unset or <code>'development'</code> in production, slowdep will be active.</p>
+      <p>Most deployment platforms set <code>NODE_ENV=production</code> automatically. If yours does not, set it explicitly in your deployment configuration. Never rely on the default &mdash; if <code>NODE_ENV</code> is unset or <code>'development'</code> in production, slowdep will be active.</p>
     </div>
   </div>
 
@@ -75,7 +75,7 @@
   ? <span class="fn">withLatency</span>(dbQueryUser, <span class="str">'postgres'</span>)
   : dbQueryUser</pre></div>
 
-    <p class="section-body" style="margin-top:1rem;">Set <code>SLOWDEP_ENABLED=true</code> in your development and staging environment configs. Leave it unset or set to <code>false</code> in production. This makes the behavior explicit and auditable — anyone reading the deployment config can see whether slowdep is active.</p>
+    <p class="section-body" style="margin-top:1rem;">Set <code>SLOWDEP_ENABLED=true</code> in your development and staging environment configs. Leave it unset or set to <code>false</code> in production. This makes the behavior explicit and auditable &mdash; anyone reading the deployment config can see whether slowdep is active.</p>
 
     <div class="codeblock"><pre><span class="cm"># .env.development</span>
 SLOWDEP_ENABLED=<span class="kw">true</span>
@@ -92,7 +92,7 @@ SLOWDEP_ENABLED=<span class="kw">false</span></pre></div>
     <h2 class="section-title">Wrapper helper</h2>
     <p class="section-body">For codebases with many wrapped functions, centralize the environment check in a single helper. This avoids repeating the conditional at every call site and makes it trivial to change the activation logic in one place.</p>
 
-    <div class="codeblock"><pre><span class="cm">// lib/slowdep.ts — your central wrapper module</span>
+    <div class="codeblock"><pre><span class="cm">// lib/slowdep.ts &mdash; your central wrapper module</span>
 <span class="kw">import</span> { <span class="fn">withLatency</span>, <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 <span class="kw">import</span> <span class="kw">type</span> { <span class="acc">LatencyProfile</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 
@@ -112,7 +112,7 @@ SLOWDEP_ENABLED=<span class="kw">false</span></pre></div>
   <span class="kw">return</span> enabled ? <span class="fn">withLatencyAll</span>(client, profile) : client
 }</pre></div>
 
-    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// In your service modules — import from your wrapper</span>
+    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// In your service modules &mdash; import from your wrapper</span>
 <span class="kw">import</span> { <span class="fn">maybeSlowDep</span>, <span class="fn">maybeSlowDepAll</span> } <span class="kw">from</span> <span class="str">'../lib/slowdep'</span>
 
 <span class="kw">export const</span> <span class="acc">queryUser</span> = <span class="fn">maybeSlowDep</span>(dbQueryUser, <span class="str">'postgres'</span>)
@@ -122,14 +122,14 @@ SLOWDEP_ENABLED=<span class="kw">false</span></pre></div>
   <div class="section">
     <div class="section-eyebrow">Verification</div>
     <h2 class="section-title">Testing that the bypass works</h2>
-    <p class="section-body">If you want to verify that production builds don't include slowdep at all — not just that the conditional prevents it from being called — you have two options:</p>
+    <p class="section-body">If you want to verify that production builds don't include slowdep at all &mdash; not just that the conditional prevents it from being called &mdash; you have two options:</p>
 
     <div class="prose" style="margin-top:0.75rem;">
       <h2>Tree shaking with bundlers</h2>
       <p>Modern bundlers (esbuild, Rollup, webpack 5) tree-shake unused imports. If you use a dynamic import pattern gated on <code>NODE_ENV</code>, the bundler can elide the import entirely in production builds:</p>
     </div>
 
-    <div class="codeblock"><pre><span class="cm">// Dynamic import — bundler can eliminate in production</span>
+    <div class="codeblock"><pre><span class="cm">// Dynamic import &mdash; bundler can eliminate in production</span>
 <span class="kw">const</span> { <span class="fn">withLatency</span> } = process.env.<span class="acc">NODE_ENV</span> !== <span class="str">'production'</span>
   ? <span class="kw">await</span> <span class="kw">import</span>(<span class="str">'slowdep'</span>)
   : { <span class="fn">withLatency</span>: (fn: <span class="kw">any</span>) => fn }</pre></div>
@@ -154,15 +154,15 @@ SLOWDEP_ENABLED=<span class="kw">false</span></pre></div>
   <div class="section">
     <div class="section-eyebrow">Staging</div>
     <h2 class="section-title">slowdep in staging environments</h2>
-    <p class="section-body">Staging is one of the most valuable places to run slowdep. Unlike unit tests — where you know what you're testing — staging runs your full application against real workflows with simulated latency. Bugs that require a specific sequence of API calls under load are much more likely to surface here.</p>
+    <p class="section-body">Staging is one of the most valuable places to run slowdep. Unlike unit tests &mdash; where you know what you're testing &mdash; staging runs your full application against real workflows with simulated latency. Bugs that require a specific sequence of API calls under load are much more likely to surface here.</p>
     <p class="section-body">Specifically, staging with slowdep can surface:</p>
 
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
-        <li><strong>Timeout misconfiguration</strong> — API handlers with a 1s timeout and a Stripe p99 of 2s will fail 1% of the time in staging, not just in theory.</li>
-        <li><strong>Missing retries</strong> — features that call external APIs but don't retry transient errors will produce visible failures in staging that are easy to find and fix.</li>
-        <li><strong>Cascade problems</strong> — if service A calls service B which calls C, and C is slow, does A's timeout fire before B's? Staging shows you the actual failure mode.</li>
-        <li><strong>UI/UX under latency</strong> — loading states, skeleton screens, and error messages that are only revealed when operations take more than 500ms are much easier to test with slowdep active.</li>
+        <li><strong>Timeout misconfiguration</strong> &mdash; API handlers with a 1s timeout and a Stripe p99 of 2s will fail 1% of the time in staging, not just in theory.</li>
+        <li><strong>Missing retries</strong> &mdash; features that call external APIs but don't retry transient errors will produce visible failures in staging that are easy to find and fix.</li>
+        <li><strong>Cascade problems</strong> &mdash; if service A calls service B which calls C, and C is slow, does A's timeout fire before B's? Staging shows you the actual failure mode.</li>
+        <li><strong>UI/UX under latency</strong> &mdash; loading states, skeleton screens, and error messages that are only revealed when operations take more than 500ms are much easier to test with slowdep active.</li>
       </ul>
     </div>
 
@@ -179,16 +179,16 @@ SLOWDEP_ENABLED=<span class="kw">false</span></pre></div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deterministic testing — slowdep docs</title>
-<meta name="description" content="How to make tests reproducible when using slowdep — seeding Math.random, mocking latency, and asserting behavior.">
+<title>Deterministic testing &mdash; slowdep docs</title>
+<meta name="description" content="How to make tests reproducible when using slowdep &mdash; seeding Math.random, mocking latency, and asserting behavior.">
 <link rel="canonical" href="https://slowdeps.site/docs/deterministic-testing/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -33,7 +33,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>Deterministic testing</div>
     <h1 class="page-title">Deterministic testing</h1>
-    <p class="page-desc">How to make tests reproducible when using slowdep — seeding Math.random, mocking latency, and asserting behavior.</p>
+    <p class="page-desc">How to make tests reproducible when using slowdep &mdash; seeding Math.random, mocking latency, and asserting behavior.</p>
   </div>
 </div>
 
@@ -41,16 +41,16 @@
   <div class="section">
     <div class="section-eyebrow">The problem</div>
     <h2 class="section-title">Why tests can be flaky</h2>
-    <p class="section-body">slowdep's lognormal sampling calls <code>Math.random()</code> on every invocation. The sampled delay is different on every call. This is the point — it produces realistic variance. But it creates a problem for tests: if your test measures elapsed time or depends on the timing of events, it will produce different results on different runs.</p>
+    <p class="section-body">slowdep's lognormal sampling calls <code>Math.random()</code> on every invocation. The sampled delay is different on every call. This is the point &mdash; it produces realistic variance. But it creates a problem for tests: if your test measures elapsed time or depends on the timing of events, it will produce different results on different runs.</p>
     <p class="section-body">A test that asserts "the retry was attempted within 300ms" might pass when the sampled delay was 4ms and fail when it was 190ms. A test with a tight <code>setTimeout</code>-based assertion might race depending on the random sample. These are real flaky tests that slow down CI and erode trust.</p>
-    <p class="section-body">The solution depends on what you're testing. Three approaches are described below — from most surgical (mock <code>Math.random</code>) to most complete (bypass slowdep entirely in tests).</p>
+    <p class="section-body">The solution depends on what you're testing. Three approaches are described below &mdash; from most surgical (mock <code>Math.random</code>) to most complete (bypass slowdep entirely in tests).</p>
   </div>
 
   <div class="section">
     <div class="section-eyebrow">Approach 1</div>
     <h2 class="section-title">Mock Math.random</h2>
     <p class="section-body">The most targeted approach: intercept <code>Math.random</code> and return a fixed value. Since slowdep uses <code>Math.random()</code> for the Box-Muller transform, a fixed random value produces a fixed latency on every call.</p>
-    <p class="section-body">A value of <code>0.5</code> produces latency close to the p50. A value close to <code>0</code> or <code>1</code> produces extreme samples — useful for testing timeout paths.</p>
+    <p class="section-body">A value of <code>0.5</code> produces latency close to the p50. A value close to <code>0</code> or <code>1</code> produces extreme samples &mdash; useful for testing timeout paths.</p>
 
     <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 
@@ -58,12 +58,12 @@
   <span class="kw">let</span> randomSpy: jest.SpyInstance
 
   <span class="fn">beforeEach</span>(() => {
-    <span class="cm">// Lock Math.random — lognormal sampling is now deterministic</span>
+    <span class="cm">// Lock Math.random &mdash; lognormal sampling is now deterministic</span>
     randomSpy = jest.<span class="fn">spyOn</span>(Math, <span class="str">'random'</span>).<span class="fn">mockReturnValue</span>(<span class="num">0.5</span>)
   })
 
   <span class="fn">afterEach</span>(() => {
-    <span class="cm">// Always restore — don't let the mock leak to other tests</span>
+    <span class="cm">// Always restore &mdash; don't let the mock leak to other tests</span>
     randomSpy.<span class="fn">mockRestore</span>()
   })
 
@@ -72,7 +72,7 @@
     <span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(mockQuery, <span class="str">'postgres'</span>)
 
     <span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowQuery</span>(<span class="num">1</span>)
-    <span class="cm">// Latency is now ~p50 every time — test is deterministic</span>
+    <span class="cm">// Latency is now ~p50 every time &mdash; test is deterministic</span>
     expect(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>)
   })
 
@@ -90,7 +90,7 @@
   <div class="section">
     <div class="section-eyebrow">Approach 2</div>
     <h2 class="section-title">Mock the whole delay</h2>
-    <p class="section-body">If you don't care about measuring latency at all — you just want your unit tests to run instantly — mock <code>withLatency</code> to return the original function unchanged. This removes all timing from the equation.</p>
+    <p class="section-body">If you don't care about measuring latency at all &mdash; you just want your unit tests to run instantly &mdash; mock <code>withLatency</code> to return the original function unchanged. This removes all timing from the equation.</p>
 
     <div class="codeblock"><pre><span class="cm">// In your test setup file or at the top of the test:</span>
 jest.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
@@ -118,10 +118,10 @@ jest.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
 
     <div class="callout warn">
       <div class="callout-title">User-implemented pattern</div>
-      <p><code>SLOWDEP_BYPASS</code> is not a built-in flag. This is a pattern you implement in your own code. slowdep itself always applies latency when called — the bypass lives in your wrapper.</p>
+      <p><code>SLOWDEP_BYPASS</code> is not a built-in flag. This is a pattern you implement in your own code. slowdep itself always applies latency when called &mdash; the bypass lives in your wrapper.</p>
     </div>
 
-    <div class="codeblock" style="margin-top:1.25rem;"><pre><span class="cm">// lib/slow.ts — your wrapper module</span>
+    <div class="codeblock" style="margin-top:1.25rem;"><pre><span class="cm">// lib/slow.ts &mdash; your wrapper module</span>
 <span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 <span class="kw">import</span> <span class="kw">type</span> { <span class="acc">LatencyProfile</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
 
@@ -158,7 +158,7 @@ jest.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
   <div class="section">
     <div class="section-eyebrow">What to test</div>
     <h2 class="section-title">What you should and shouldn't assert</h2>
-    <p class="section-body">The goal of slowdep is to help you test resilience behavior — not to let you assert exact millisecond values. Here's a practical guide:</p>
+    <p class="section-body">The goal of slowdep is to help you test resilience behavior &mdash; not to let you assert exact millisecond values. Here's a practical guide:</p>
 
     <div class="callout warn">
       <div class="callout-title">Don't test</div>
@@ -189,16 +189,16 @@ jest.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

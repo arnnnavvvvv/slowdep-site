@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Why not setTimeout? — slowdep guides</title>
+<title>Why not setTimeout? &mdash; slowdep guides</title>
 <meta name="description" content="setTimeout gives every call the same delay. Real dependencies don't. Here's why that matters.">
 <link rel="canonical" href="https://slowdeps.site/guides/why-not-settimeout/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -45,12 +45,12 @@
     <p class="section-body">
       When you write <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">await new Promise(r => setTimeout(r, 200))</code> in a test,
       you feel like you've done something responsible. You've added latency. You've simulated a slow dependency.
-      But you haven't — you've added a <em>fixed</em> delay. Every single call takes exactly 200ms.
+      But you haven't &mdash; you've added a <em>fixed</em> delay. Every single call takes exactly 200ms.
     </p>
     <p class="section-body">
       That means your retry logic looks great because it triggers at exactly 200ms. Your timeout is never hit
       because the mock never drifts. Your loading state flashes for precisely 200ms, every time.
-      The test passes. The code ships. Production breaks — because production doesn't have a timer that fires at 200ms. It has a
+      The test passes. The code ships. Production breaks &mdash; because production doesn't have a timer that fires at 200ms. It has a
       distribution: most calls are 5ms, and one in a hundred takes 2 seconds.
     </p>
     <div class="codeblock"><pre><span class="cm">// what your test does</span>
@@ -78,10 +78,10 @@
     <p class="section-body">
       A small fraction of calls hit a slow path: a GC pause on the database server, a network retransmission,
       a cold connection being opened, a lock wait, a noisy neighbor on the same host. These calls take 10x, 100x longer.
-      The result is a distribution with a sharp peak on the left and a long tail on the right — a lognormal distribution.
+      The result is a distribution with a sharp peak on the left and a long tail on the right &mdash; a lognormal distribution.
     </p>
     <div style="margin-top:1.5rem;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">setTimeout — flat distribution</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">setTimeout &mdash; flat distribution</div>
       <div style="display:flex;align-items:flex-end;gap:3px;height:60px;">
         <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
         <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
@@ -94,10 +94,10 @@
         <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
         <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms ——————————————————————— 200ms ——————————————————————— 400ms</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash; 200ms &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash; 400ms</div>
     </div>
     <div style="margin-top:1.5rem;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">slowdep — lognormal distribution (realistic)</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">slowdep &mdash; lognormal distribution (realistic)</div>
       <div style="display:flex;align-items:flex-end;gap:3px;height:60px;">
         <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:55px;"></div>
         <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:42px;"></div>
@@ -110,7 +110,7 @@
         <div style="flex:1;background:var(--red);border-radius:2px 2px 0 0;height:3px;"></div>
         <div style="flex:1;background:var(--red);border-radius:2px 2px 0 0;height:2px;"></div>
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms ——— fast path (most calls) ————————— p99 (1%) —————— tail (rare)</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms &mdash;&mdash;&mdash; fast path (most calls) &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash; p99 (1%) &mdash;&mdash;&mdash;&mdash;&mdash;&mdash; tail (rare)</div>
     </div>
   </div>
 
@@ -118,7 +118,7 @@
     <div class="section-eyebrow">Hidden bugs</div>
     <h2 class="section-title">The bugs setTimeout hides</h2>
     <p class="section-body">
-      Fixed delays don't just fail to catch bugs — they actively hide them. Here are three categories of bugs
+      Fixed delays don't just fail to catch bugs &mdash; they actively hide them. Here are three categories of bugs
       that pass silently with setTimeout but surface immediately with realistic latency:
     </p>
     <div class="steps" style="margin-top:1.5rem;">
@@ -128,7 +128,7 @@
           <div class="step-title">Retry logic that only triggers at the configured threshold</div>
           <div class="step-body">
             If your retry fires after 250ms and your mock always takes 200ms, retries never trigger.
-            In production, 1% of calls take 800ms — and your retry logic is untested at that latency.
+            In production, 1% of calls take 800ms &mdash; and your retry logic is untested at that latency.
             With slowdep's lognormal distribution, some test calls will naturally exceed 250ms and exercise the retry path.
           </div>
         </div>
@@ -141,7 +141,7 @@
             Set your mock delay to 200ms and your timeout to 250ms: timeout never fires.
             Set mock to 300ms and timeout to 250ms: timeout always fires. Neither tells you
             whether your timeout is calibrated correctly for realistic tail latency. slowdep samples
-            across the full distribution, so some calls will hit the timeout and most won't —
+            across the full distribution, so some calls will hit the timeout and most won't &mdash;
             exactly like production.
           </div>
         </div>
@@ -165,7 +165,7 @@
     <div class="section-eyebrow">The solution</div>
     <h2 class="section-title">What slowdep does differently</h2>
     <p class="section-body">
-      slowdep samples from a lognormal distribution parameterized by p50 and p99 — the two numbers
+      slowdep samples from a lognormal distribution parameterized by p50 and p99 &mdash; the two numbers
       you can actually measure from your APM tool. Most calls are fast (near p50), a small fraction
       are slow (near p99), and rare calls exceed that. This matches what production looks like.
     </p>
@@ -178,15 +178,15 @@
     <div id="t-slow" class="code-panel active">
       <div class="code-block"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
 
-<span class="cm">// wrap your db client once — done</span>
+<span class="cm">// wrap your db client once &mdash; done</span>
 <span class="kw">const</span> <span class="acc">db</span> = <span class="fn">withLatency</span>(realDbClient, <span class="str">'postgres'</span>);
-<span class="cm">// p50: 5ms, p99: 200ms — lognormal distribution</span>
+<span class="cm">// p50: 5ms, p99: 200ms &mdash; lognormal distribution</span>
 <span class="cm">// some calls: 3ms. some: 180ms. rare: 400ms+</span>
 
 <span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id]);</pre></div>
     </div>
     <div id="t-set" class="code-panel">
-      <div class="code-block"><pre><span class="cm">// the setTimeout equivalent — manual and wrong</span>
+      <div class="code-block"><pre><span class="cm">// the setTimeout equivalent &mdash; manual and wrong</span>
 <span class="kw">const</span> <span class="acc">db</span> = {
   query: <span class="kw">async</span> (sql, params) =&gt; {
     <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, <span class="num">200</span>)); <span class="cm">// always 200ms</span>
@@ -204,8 +204,8 @@
     <div class="section-eyebrow">Scope</div>
     <h2 class="section-title">When setTimeout is fine</h2>
     <p class="section-body">
-      setTimeout isn't always wrong. If you just need <em>some</em> delay in a smoke test — you're not testing
-      retry logic, you're not testing timeouts, you just need the function to be async — setTimeout works fine.
+      setTimeout isn't always wrong. If you just need <em>some</em> delay in a smoke test &mdash; you're not testing
+      retry logic, you're not testing timeouts, you just need the function to be async &mdash; setTimeout works fine.
     </p>
     <p class="section-body">
       Use slowdep when the <em>shape</em> of the latency distribution matters to the correctness of your code.
@@ -214,7 +214,7 @@
     </p>
     <table class="cmp-table" style="margin-top:1.5rem;">
       <tr><th>scenario</th><th>setTimeout</th><th>slowdep</th></tr>
-      <tr><td>smoke test — just needs async</td><td><span class="yes">fine</span></td><td><span class="yes">also fine</span></td></tr>
+      <tr><td>smoke test &mdash; just needs async</td><td><span class="yes">fine</span></td><td><span class="yes">also fine</span></td></tr>
       <tr><td>testing retry logic</td><td><span class="no">hides bugs</span></td><td><span class="yes">catches bugs</span></td></tr>
       <tr><td>testing timeout calibration</td><td><span class="no">misleading</span></td><td><span class="yes">accurate</span></td></tr>
       <tr><td>testing circuit breaker</td><td><span class="no">insufficient</span></td><td><span class="yes">correct</span></td></tr>
@@ -235,16 +235,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

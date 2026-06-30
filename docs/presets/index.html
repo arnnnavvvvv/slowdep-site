@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Presets — slowdep docs</title>
+<title>Presets &mdash; slowdep docs</title>
 <meta name="description" content="Real-world latency profiles for Postgres, Redis, S3, Stripe, OpenAI, and more. Pass a string and you're done.">
 <link rel="canonical" href="https://slowdeps.site/docs/presets/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
       <a href="/glossary/" class="nav-link">Glossary</a>
       <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
     </div>
-    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub &#8599;</a>
   </div>
 </nav>
 
@@ -135,7 +135,7 @@
 
     <div class="prose">
       <h2>postgres</h2>
-      <p>Models a Postgres database on the same network segment as the application — typical of a managed RDS or Cloud SQL instance in the same availability zone. The p50 of 5ms reflects a warm connection pool serving a simple indexed query. The p99 of 200ms accounts for lock contention, autovacuum interference, and occasional plan cache invalidation. The 0.1% error rate models brief connection drops during failovers or connection pool exhaustion under burst load.</p>
+      <p>Models a Postgres database on the same network segment as the application &mdash; typical of a managed RDS or Cloud SQL instance in the same availability zone. The p50 of 5ms reflects a warm connection pool serving a simple indexed query. The p99 of 200ms accounts for lock contention, autovacuum interference, and occasional plan cache invalidation. The 0.1% error rate models brief connection drops during failovers or connection pool exhaustion under burst load.</p>
 
       <h2>mysql</h2>
       <p>Similar to Postgres but slightly faster at the median (4ms vs 5ms) and lower tail (180ms vs 200ms), reflecting MySQL's historically faster simple query path. The error rate is identical at 0.1%. Use this for any MySQL-compatible database including MariaDB and PlanetScale.</p>
@@ -147,7 +147,7 @@
       <p>Models a MongoDB Atlas cluster or self-hosted replica set. MongoDB's document-oriented access pattern and BSON serialization add a bit more overhead than SQL databases, reflected in the higher p50 (8ms) and p99 (250ms). The longer tail accounts for collection scans on under-indexed queries and replica sync lag during writes.</p>
 
       <h2>dynamodb</h2>
-      <p>Models AWS DynamoDB with provisioned or on-demand capacity in the same region. DynamoDB is an SSD-backed distributed key-value store with consistent single-digit millisecond latency for single-item operations — p50 of 3ms and p99 of 50ms. The low error rate (0.05%) reflects DynamoDB's high availability design, though throttling during burst traffic can cause transient failures not captured by this simple model.</p>
+      <p>Models AWS DynamoDB with provisioned or on-demand capacity in the same region. DynamoDB is an SSD-backed distributed key-value store with consistent single-digit millisecond latency for single-item operations &mdash; p50 of 3ms and p99 of 50ms. The low error rate (0.05%) reflects DynamoDB's high availability design, though throttling during burst traffic can cause transient failures not captured by this simple model.</p>
     </div>
   </div>
 
@@ -167,16 +167,16 @@
 
     <div class="prose">
       <h2>stripe</h2>
-      <p>Models the Stripe API for payment operations like charge creation, customer lookups, and refunds. Stripe's infrastructure is highly reliable but involves significant server-side processing for payment operations — fraud scoring, network authorization, compliance checks. The p50 of 200ms is typical for a charge.create call. The p99 of 2000ms reflects occasional processing delays. The 0.2% error rate is higher than database presets because Stripe returns transient errors (rate limits, connection timeouts) that your retry logic must handle.</p>
+      <p>Models the Stripe API for payment operations like charge creation, customer lookups, and refunds. Stripe's infrastructure is highly reliable but involves significant server-side processing for payment operations &mdash; fraud scoring, network authorization, compliance checks. The p50 of 200ms is typical for a charge.create call. The p99 of 2000ms reflects occasional processing delays. The 0.2% error rate is higher than database presets because Stripe returns transient errors (rate limits, connection timeouts) that your retry logic must handle.</p>
 
       <h2>openai</h2>
       <p>Models the OpenAI Chat Completions API for medium-length requests. LLM inference is computationally expensive and has high variance: the p50 of 800ms is for short completions, while the p99 of 8000ms reflects longer generations, high load periods, and cold model loading. The 0.5% error rate accounts for rate limiting (429s), server overload (503s), and connection timeouts that are common when OpenAI is under heavy traffic. This preset is particularly useful for testing timeout and retry logic around LLM calls.</p>
 
       <h2>anthropic</h2>
-      <p>Models the Anthropic Messages API. Slightly faster than OpenAI at the median (600ms vs 800ms) with a similar tail (7000ms vs 8000ms at p99) and the same 0.5% error rate. Both LLM presets share the characteristic that the "typical" case is already quite slow compared to database or cache operations, which means timeouts need to be set much higher — usually 10–30 seconds rather than 1–2 seconds.</p>
+      <p>Models the Anthropic Messages API. Slightly faster than OpenAI at the median (600ms vs 800ms) with a similar tail (7000ms vs 8000ms at p99) and the same 0.5% error rate. Both LLM presets share the characteristic that the "typical" case is already quite slow compared to database or cache operations, which means timeouts need to be set much higher &mdash; usually 10–30 seconds rather than 1–2 seconds.</p>
 
       <h2>http</h2>
-      <p>A generic HTTP API preset for services not covered by a specific preset. The p50 of 80ms and p99 of 1000ms represent a well-operated but not exceptional external API — typical of third-party webhooks, geocoding services, email providers, or internal microservices over the network. The 1% error rate is the highest of all presets, reflecting the reality that generic HTTP services tend to have less strict SLAs than specialized infrastructure like Redis or DynamoDB.</p>
+      <p>A generic HTTP API preset for services not covered by a specific preset. The p50 of 80ms and p99 of 1000ms represent a well-operated but not exceptional external API &mdash; typical of third-party webhooks, geocoding services, email providers, or internal microservices over the network. The 1% error rate is the highest of all presets, reflecting the reality that generic HTTP services tend to have less strict SLAs than specialized infrastructure like Redis or DynamoDB.</p>
     </div>
   </div>
 
@@ -188,13 +188,13 @@
     <div class="prose" style="margin-top:0.75rem;">
       <ul>
         <li>Your production APM (Datadog, New Relic, Honeycomb) shows p50/p99 values that differ materially from the preset.</li>
-        <li>You're modeling a service that doesn't fit any preset — e.g., a gRPC microservice, a message broker, or an in-house API.</li>
-        <li>You want to test a degraded scenario — e.g., what happens when your database's p99 climbs to 2000ms during peak load?</li>
+        <li>You're modeling a service that doesn't fit any preset &mdash; e.g., a gRPC microservice, a message broker, or an in-house API.</li>
+        <li>You want to test a degraded scenario &mdash; e.g., what happens when your database's p99 climbs to 2000ms during peak load?</li>
         <li>You need a specific error rate different from the preset defaults.</li>
       </ul>
     </div>
 
-    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// Custom profile — your actual production p50/p99</span>
+    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// Custom profile &mdash; your actual production p50/p99</span>
 <span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(query, {
   p50: <span class="num">6</span>,        <span class="cm">// your measured median</span>
   p99: <span class="num">450</span>,      <span class="cm">// your measured 99th percentile</span>
@@ -209,16 +209,16 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
       github
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
       npm
     </a>
-    <span style="color:var(--border-light)">·</span>
+    <span style="color:var(--border-light)">&middot;</span>
     <span class="footer-link" style="cursor:default">MIT license</span>
   </div>
-  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
-  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+  <div class="footer-copy">slowdep &middot; zero dependencies &middot; TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with &#9829; by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
 </footer>
 </body>
 </html>

@@ -1,12 +1,29 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>slowdep — realistic latency for Node.js</title>
+<meta name="description" content="slowdep wraps any async function with lognormal latency to simulate real-world dependency behavior. Test retry logic, timeouts, and circuit breakers with built-in presets for Postgres, Redis, S3, Stripe, OpenAI, and more.">
+<link rel="canonical" href="https://slowdeps.site/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://slowdeps.site/">
+<meta property="og:title" content="slowdep — realistic latency for Node.js">
+<meta property="og:description" content="Wrap any async function with realistic, lognormal latency. Built-in presets for Postgres, Redis, S3, Stripe, OpenAI, and more. Zero dependencies, TypeScript included.">
+<meta property="og:site_name" content="slowdep">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="slowdep — realistic latency for Node.js">
+<meta name="twitter:description" content="Wrap any async function with realistic, lognormal latency. Built-in presets for Postgres, Redis, S3, Stripe, OpenAI, and more. Zero dependencies, TypeScript included.">
+<meta name="twitter:creator" content="@aarnxvvv">
+
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -179,8 +196,68 @@ footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: 
   .hero-logo { letter-spacing: -2px; }
 }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "slowdep",
+  "url": "https://slowdeps.site",
+  "description": "slowdep wraps any async Node.js function with realistic lognormal latency, simulating how real production dependencies behave. Use it to test retry logic, timeouts, and circuit breakers. Built-in presets cover Postgres, MySQL, Redis, MongoDB, DynamoDB, S3, Stripe, OpenAI, Anthropic, and generic HTTP.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Node.js",
+  "softwareVersion": "latest",
+  "programmingLanguage": ["JavaScript", "TypeScript"],
+  "keywords": "latency simulation, testing, Node.js, TypeScript, async, lognormal, chaos engineering, retry logic, circuit breaker, dependency mocking",
+  "installUrl": "https://www.npmjs.com/package/slowdep",
+  "downloadUrl": "https://www.npmjs.com/package/slowdep",
+  "codeRepository": "https://github.com/arnnnavvvvv/slowdep",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "author": {
+    "@type": "Person",
+    "name": "aarnxvvv",
+    "url": "https://x.com/aarnxvvv"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "withLatency(fn, preset) — wrap a single async function with a named latency preset",
+    "withLatency(fn, { p50, p99, errorRate }) — wrap with a custom latency profile",
+    "withLatencyAll(client, preset) — wrap every async method on a client object",
+    "Built-in presets: postgres, mysql, redis, mongodb, dynamodb, s3, stripe, openai, anthropic, http",
+    "Lognormal distribution via Box-Muller transform — realistic long tail, not flat delays",
+    "Configurable error rate — a fraction of calls throw a transient error",
+    "Zero runtime dependencies",
+    "Full TypeScript types included"
+  ],
+  "softwareHelp": {
+    "@type": "CreativeWork",
+    "url": "https://slowdeps.site/#usage"
+  }
+}
+</script>
 </head>
 <body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
 
 <div class="hero">
   <div class="hero-logo-row">

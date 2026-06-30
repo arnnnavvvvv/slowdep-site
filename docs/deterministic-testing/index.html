@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deterministic testing — slowdep docs</title>
+<meta name="description" content="How to make tests reproducible when using slowdep — seeding Math.random, mocking latency, and asserting behavior.">
+<link rel="canonical" href="https://slowdeps.site/docs/deterministic-testing/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>Deterministic testing</div>
+    <h1 class="page-title">Deterministic testing</h1>
+    <p class="page-desc">How to make tests reproducible when using slowdep — seeding Math.random, mocking latency, and asserting behavior.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">The problem</div>
+    <h2 class="section-title">Why tests can be flaky</h2>
+    <p class="section-body">slowdep's lognormal sampling calls <code>Math.random()</code> on every invocation. The sampled delay is different on every call. This is the point — it produces realistic variance. But it creates a problem for tests: if your test measures elapsed time or depends on the timing of events, it will produce different results on different runs.</p>
+    <p class="section-body">A test that asserts "the retry was attempted within 300ms" might pass when the sampled delay was 4ms and fail when it was 190ms. A test with a tight <code>setTimeout</code>-based assertion might race depending on the random sample. These are real flaky tests that slow down CI and erode trust.</p>
+    <p class="section-body">The solution depends on what you're testing. Three approaches are described below — from most surgical (mock <code>Math.random</code>) to most complete (bypass slowdep entirely in tests).</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Approach 1</div>
+    <h2 class="section-title">Mock Math.random</h2>
+    <p class="section-body">The most targeted approach: intercept <code>Math.random</code> and return a fixed value. Since slowdep uses <code>Math.random()</code> for the Box-Muller transform, a fixed random value produces a fixed latency on every call.</p>
+    <p class="section-body">A value of <code>0.5</code> produces latency close to the p50. A value close to <code>0</code> or <code>1</code> produces extreme samples — useful for testing timeout paths.</p>
+
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">describe</span>(<span class="str">'UserService'</span>, () => {
+  <span class="kw">let</span> randomSpy: jest.SpyInstance
+
+  <span class="fn">beforeEach</span>(() => {
+    <span class="cm">// Lock Math.random — lognormal sampling is now deterministic</span>
+    randomSpy = jest.<span class="fn">spyOn</span>(Math, <span class="str">'random'</span>).<span class="fn">mockReturnValue</span>(<span class="num">0.5</span>)
+  })
+
+  <span class="fn">afterEach</span>(() => {
+    <span class="cm">// Always restore — don't let the mock leak to other tests</span>
+    randomSpy.<span class="fn">mockRestore</span>()
+  })
+
+  <span class="fn">it</span>(<span class="str">'returns user on success'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> mockQuery = jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="num">1</span>, name: <span class="str">'Alice'</span> })
+    <span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(mockQuery, <span class="str">'postgres'</span>)
+
+    <span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowQuery</span>(<span class="num">1</span>)
+    <span class="cm">// Latency is now ~p50 every time — test is deterministic</span>
+    expect(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'triggers timeout on slow response'</span>, <span class="kw">async</span> () => {
+    <span class="cm">// Use a value close to 0 to sample near p99</span>
+    randomSpy.<span class="fn">mockReturnValue</span>(<span class="num">0.01</span>)
+    <span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(mockQuery, <span class="str">'postgres'</span>)
+
+    <span class="cm">// This test exercises the slow path reliably</span>
+    <span class="kw">await</span> expect(<span class="fn">withTimeout</span>(<span class="acc">slowQuery</span>(<span class="num">1</span>), <span class="num">10</span>)).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'timeout'</span>)
+  })
+})</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Approach 2</div>
+    <h2 class="section-title">Mock the whole delay</h2>
+    <p class="section-body">If you don't care about measuring latency at all — you just want your unit tests to run instantly — mock <code>withLatency</code> to return the original function unchanged. This removes all timing from the equation.</p>
+
+    <div class="codeblock"><pre><span class="cm">// In your test setup file or at the top of the test:</span>
+jest.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
+  <span class="fn">withLatency</span>: (fn: <span class="kw">any</span>) => fn,
+  <span class="fn">withLatencyAll</span>: (client: <span class="kw">any</span>) => client,
+}))</pre></div>
+
+    <div class="callout" style="margin-top:1.25rem;">
+      <div class="callout-title">When to use this</div>
+      <p>This approach is best for unit tests that focus on business logic rather than resilience behavior. If you're testing that your retry code works, you probably want slowdep active (or Approach 1). If you're testing that <code>createOrder</code> calls <code>insertOrder</code> with the right arguments, mocking the whole thing is cleaner.</p>
+    </div>
+
+    <p class="section-body" style="margin-top:1rem;">With Vitest, use <code>vi.mock</code> instead:</p>
+
+    <div class="codeblock"><pre>vi.<span class="fn">mock</span>(<span class="str">'slowdep'</span>, () => ({
+  <span class="fn">withLatency</span>: (fn: <span class="kw">any</span>) => fn,
+  <span class="fn">withLatencyAll</span>: (client: <span class="kw">any</span>) => client,
+}))</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Approach 3</div>
+    <h2 class="section-title">Environment variable bypass</h2>
+    <p class="section-body">A user-implemented pattern that makes the bypass explicit and observable: wrap the <code>withLatency</code> call in a conditional that checks an environment variable. In your test environment, set <code>SLOWDEP_BYPASS=1</code> and slowdep is never called at all.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">User-implemented pattern</div>
+      <p><code>SLOWDEP_BYPASS</code> is not a built-in flag. This is a pattern you implement in your own code. slowdep itself always applies latency when called — the bypass lives in your wrapper.</p>
+    </div>
+
+    <div class="codeblock" style="margin-top:1.25rem;"><pre><span class="cm">// lib/slow.ts — your wrapper module</span>
+<span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+<span class="kw">import</span> <span class="kw">type</span> { <span class="acc">LatencyProfile</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">export function</span> <span class="fn">maybeSlowDep</span>&lt;
+  T <span class="kw">extends</span> (...args: <span class="kw">any</span>[]) => Promise&lt;<span class="kw">any</span>&gt;
+&gt;(fn: T, profile: <span class="acc">LatencyProfile</span>): T {
+  <span class="kw">if</span> (process.env.<span class="acc">SLOWDEP_BYPASS</span> === <span class="str">'1'</span>) <span class="kw">return</span> fn
+  <span class="kw">if</span> (process.env.<span class="acc">NODE_ENV</span> === <span class="str">'production'</span>) <span class="kw">return</span> fn
+  <span class="kw">return</span> <span class="fn">withLatency</span>(fn, profile)
+}</pre></div>
+
+    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// Usage in your service code</span>
+<span class="kw">import</span> { <span class="fn">maybeSlowDep</span> } <span class="kw">from</span> <span class="str">'../lib/slow'</span>
+
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">maybeSlowDep</span>(queryUser, <span class="str">'postgres'</span>)
+
+<span class="cm">// In test environment with SLOWDEP_BYPASS=1:</span>
+<span class="cm">// slowQuery === queryUser (no latency)</span>
+
+<span class="cm">// In development without the env var:</span>
+<span class="cm">// slowQuery is the wrapped version with postgres latency</span></pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">Set the variable in your test runner config:</p>
+
+    <div class="codeblock"><pre><span class="cm">// jest.config.js</span>
+<span class="kw">export default</span> {
+  testEnvironment: <span class="str">'node'</span>,
+  testEnvironmentOptions: {
+    env: { <span class="acc">SLOWDEP_BYPASS</span>: <span class="str">'1'</span> }
+  }
+}</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">What you should and shouldn't assert</h2>
+    <p class="section-body">The goal of slowdep is to help you test resilience behavior — not to let you assert exact millisecond values. Here's a practical guide:</p>
+
+    <div class="callout warn">
+      <div class="callout-title">Don't test</div>
+      <p>That the call took exactly N milliseconds. Latency is intentionally variable and any assertion on exact timing is fragile. Don't assert <code>elapsed &lt; 10</code> or <code>elapsed === 5</code>.</p>
+    </div>
+
+    <div class="callout tip" style="margin-top:1rem;">
+      <div class="callout-title">Do test</div>
+      <p>That your code handles both fast and slow responses correctly. Test that retries fire when the error rate triggers. Test that your timeout logic cancels the operation when latency exceeds the deadline. Test that your circuit breaker trips after N failures. These behaviors are what slowdep exists to surface.</p>
+    </div>
+
+    <div class="codeblock" style="margin-top:1.25rem;"><pre><span class="cm">// Good: testing resilience behavior, not timing</span>
+<span class="fn">it</span>(<span class="str">'retries once on transient error then succeeds'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> mockFn = jest.<span class="fn">fn</span>()
+    .<span class="fn">mockRejectedValueOnce</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Simulated transient error'</span>))
+    .<span class="fn">mockResolvedValueOnce</span>({ id: <span class="num">1</span> })
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">withRetry</span>(<span class="fn">withLatency</span>(mockFn, <span class="str">'postgres'</span>))
+  expect(mockFn).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">2</span>)
+  expect(result.id).<span class="fn">toBe</span>(<span class="num">1</span>)
+})</pre></div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

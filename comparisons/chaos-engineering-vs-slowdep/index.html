@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaos engineering vs slowdep — comparison</title>
+<meta name="description" content="Chaos engineering tests production systems. slowdep tests your code before it gets there. Different phases, complementary goals.">
+<link rel="canonical" href="https://slowdeps.site/comparisons/chaos-engineering-vs-slowdep/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/settimeout-vs-slowdep/" class="nav-link active">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Comparisons<span>/</span>Chaos engineering vs slowdep</div>
+    <h1 class="page-title">Chaos engineering vs slowdep</h1>
+    <p class="page-desc">Chaos engineering tests production systems. slowdep tests your code before it gets there. Different phases, complementary goals.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">What chaos engineering is</div>
+    <h2 class="section-title">Chaos engineering: finding weaknesses in production</h2>
+    <p class="section-body">
+      Chaos engineering is the practice of deliberately injecting failure into production (or production-like)
+      systems to discover weaknesses before they cause incidents. Tools like Chaos Monkey, Gremlin, and AWS Fault
+      Injection Service terminate EC2 instances, partition networks, introduce latency at the infrastructure level,
+      and saturate CPU — while the system is serving real traffic.
+    </p>
+    <p class="section-body">
+      The philosophy: systems will fail in unexpected ways. Better to discover those failure modes deliberately
+      and safely (with runbooks and a team watching) than during an actual incident at 2am.
+      Chaos engineering is inherently production-focused, requires organizational buy-in, and carries real risk.
+    </p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">What slowdep is</div>
+    <h2 class="section-title">slowdep: shift-left chaos for developers</h2>
+    <p class="section-body">
+      slowdep operates at the test level, not the production level. Instead of injecting failures
+      into a running system, it wraps functions in tests to simulate the kind of latency and error
+      conditions that chaos engineering would find in production.
+    </p>
+    <p class="section-body">
+      Think of it as "shift-left chaos" — finding the bugs in dev and CI that chaos engineering
+      would find in production. The bugs that circuit breakers miss, retries don't handle, and
+      timeouts don't catch properly are bugs that can be found during development — if your tests
+      have realistic latency.
+    </p>
+    <div class="callout tip">
+      <div class="callout-title">Shift-left</div>
+      <p>"Shift-left" means moving testing earlier in the development cycle (left on the timeline). slowdep shifts chaos testing from production all the way back to the developer's laptop and CI.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Comparison</div>
+    <h2 class="section-title">Chaos engineering vs slowdep</h2>
+    <table class="cmp-table">
+      <tr><th>dimension</th><th>chaos engineering</th><th>slowdep</th></tr>
+      <tr>
+        <td>environment</td>
+        <td>production or staging</td>
+        <td>development and CI tests</td>
+      </tr>
+      <tr>
+        <td>risk level</td>
+        <td><span class="no">high — real users may be affected</span></td>
+        <td><span class="yes">zero — runs in test process only</span></td>
+      </tr>
+      <tr>
+        <td>cost</td>
+        <td><span class="no">high — tooling, team time, incident risk</span></td>
+        <td><span class="yes">zero — free npm package</span></td>
+      </tr>
+      <tr>
+        <td>team required</td>
+        <td><span class="no">SRE team, runbooks, monitoring</span></td>
+        <td><span class="yes">individual developer</span></td>
+      </tr>
+      <tr>
+        <td>feedback loop</td>
+        <td><span class="no">hours — deploy, run experiment, analyze</span></td>
+        <td><span class="yes">seconds — test run</span></td>
+      </tr>
+      <tr>
+        <td>what it tests</td>
+        <td>system-level resilience (infra, networking, dependencies)</td>
+        <td>code-level resilience (retry logic, timeouts, circuit breakers)</td>
+      </tr>
+      <tr>
+        <td>when to use</td>
+        <td>after code is in production and validated</td>
+        <td>during development and every CI build</td>
+      </tr>
+      <tr>
+        <td>granularity</td>
+        <td>infrastructure-level (hosts, networks, zones)</td>
+        <td>function-level (per dependency method)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">How they relate</div>
+    <h2 class="section-title">Complementary goals, different phases</h2>
+    <p class="section-body">
+      slowdep doesn't replace chaos engineering — it complements it by addressing the earlier
+      phase of the development cycle. A typical resilience testing strategy uses both:
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Development: slowdep catches code-level bugs</div>
+          <div class="step-body">
+            Write tests with slowdep to verify that retry logic works, timeouts are calibrated,
+            circuit breakers trip correctly, and loading states handle the full latency range.
+            These bugs are cheap to fix in development — no deploy, no real traffic.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">CI: slowdep gates every merge</div>
+          <div class="step-body">
+            Run latency-aware integration tests in CI (with <code>SLOWDEP_ENABLED=true</code>)
+            to prevent latency regressions from being merged. A circuit breaker misconfiguration
+            won't make it to production if it fails a CI test that simulates the trip condition.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Staging/Production: chaos engineering finds systemic gaps</div>
+          <div class="step-body">
+            After slowdep has validated the code-level resilience patterns, chaos engineering
+            tests the system as a whole: does your circuit breaker actually protect against
+            cascading failures at scale? Does your retry logic create thundering herd effects
+            when 10,000 clients all retry at once? These are system-level questions.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Example</div>
+    <h2 class="section-title">The same bug, found earlier</h2>
+    <p class="section-body">
+      Consider a circuit breaker misconfiguration: the threshold is set to 10 failures,
+      but in production a 30% error rate at 3s p99 trips the breaker with only 4 failures
+      (because the failures come so slowly that the sliding window sees them as dense).
+    </p>
+    <p class="section-body">
+      Chaos engineering would find this during a production game day, with real users affected.
+      slowdep finds it during a test run, with a reproducible, fixable scenario.
+    </p>
+    <div class="codeblock"><pre><span class="cm">// This test would catch the circuit breaker misconfiguration</span>
+<span class="cm">// before chaos engineering would need to find it in production</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">it</span>(<span class="str">'circuit breaker trips at correct failure count under realistic latency'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> degraded = <span class="fn">withLatency</span>(
+    <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'downstream error'</span>); },
+    { p50: <span class="num">500</span>, p99: <span class="num">3000</span>, errorRate: <span class="num">1.0</span> }
+    <span class="cm">// realistic: slow AND failing, like a degraded production service</span>
+  );
+
+  <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">CircuitBreaker</span>({ threshold: <span class="num">10</span>, window: <span class="num">5000</span> });
+  <span class="kw">let</span> failFastCount = <span class="num">0</span>;
+
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">15</span>; i++) {
+    <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">degraded</span>()).<span class="fn">catch</span>(() =&gt; {
+      <span class="kw">if</span> (Date.<span class="fn">now</span>() - start &lt; <span class="num">10</span>) failFastCount++; <span class="cm">// &lt;10ms = fail-fast</span>
+    });
+  }
+
+  <span class="cm">// after 10 failures, subsequent calls should fail-fast</span>
+  <span class="cm">// if this fails: your threshold is misconfigured for realistic latency</span>
+  <span class="fn">expect</span>(failFastCount).<span class="fn">toBeGreaterThan</span>(<span class="num">0</span>);
+});</pre></div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.885 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

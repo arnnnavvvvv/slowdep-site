@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + Stripe — integration</title>
+<meta name="description" content="Simulate realistic Stripe API latency (p50: 200ms, p99: 2s) in tests. Verify your checkout flow handles slow payment processing gracefully.">
+<link rel="canonical" href="https://slowdeps.site/integrations/stripe/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>Stripe</div>
+    <h1 class="page-title">slowdep + Stripe</h1>
+    <p class="page-desc">Simulate realistic Stripe API latency (p50: 200ms, p99: 2s) in tests. Verify your checkout flow handles slow payment processing gracefully before real money is involved.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">stripe latency profile</h2>
+    <p class="section-body">Stripe is slower than a database but faster than an LLM. At p50 of 200ms, your checkout flow needs explicit loading states. At p99 of 2s, a user might think the payment button is broken. These are the cases slowdep helps you design for.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">stripe</span>
+        <span class="preset-val">200ms</span>
+        <span class="preset-val">800ms</span>
+        <span class="preset-val">2s</span>
+        <span class="preset-err">0.2%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Payment UX requires testing at p99</div>
+      <p>At p99, your checkout takes 2 seconds. Without slowdep, your local Stripe test key responds in ~50ms, and you never build the loading state, disabled button, or "Processing..." text that users actually need. A 2-second payment that looks frozen causes payment abandonment.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap paymentIntents.create</h2>
+    <p class="section-body">The most direct approach: wrap the specific Stripe sub-resource method you use. Stripe's client uses a sub-resource pattern (<code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">stripe.paymentIntents</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">stripe.customers</code>, etc.).</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
+
+<span class="cm">// Wrap the create method on the paymentIntents sub-resource</span>
+<span class="kw">const</span> <span class="acc">slowCreatePayment</span> = <span class="fn">withLatency</span>(
+  stripe.paymentIntents.create.<span class="fn">bind</span>(stripe.paymentIntents),
+  <span class="str">'stripe'</span>
+);
+
+<span class="cm">// Now your checkout handler experiences realistic Stripe latency</span>
+<span class="kw">async function</span> <span class="fn">createCheckout</span>(amount: <span class="kw">number</span>, currency: string, customerId: string) {
+  <span class="kw">const</span> paymentIntent = <span class="kw">await</span> <span class="acc">slowCreatePayment</span>({
+    amount,                 <span class="cm">// in smallest currency unit (cents for USD)</span>
+    currency,
+    customer: customerId,
+    automatic_payment_methods: { enabled: <span class="kw">true</span> }
+  });
+
+  <span class="kw">return</span> { clientSecret: paymentIntent.client_secret };
+}
+</pre>
+    </div>
+  </div>
+
+  <!-- WRAPPING A CLIENT -->
+  <div class="section">
+    <div class="section-eyebrow">Wrapping a client</div>
+    <h2 class="section-title">Wrap an entire sub-resource with withLatencyAll</h2>
+    <p class="section-body">Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on a specific sub-resource to wrap all its methods at once — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">create</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">retrieve</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">update</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">cancel</code>.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
+
+<span class="cm">// Wrap the entire paymentIntents sub-resource</span>
+<span class="kw">const</span> <span class="acc">slowPaymentIntents</span> = <span class="fn">withLatencyAll</span>(stripe.paymentIntents, <span class="str">'stripe'</span>);
+
+<span class="cm">// Wrap customers too</span>
+<span class="kw">const</span> <span class="acc">slowCustomers</span> = <span class="fn">withLatencyAll</span>(stripe.customers, <span class="str">'stripe'</span>);
+
+<span class="cm">// Full checkout flow with realistic latency on every Stripe call</span>
+<span class="kw">async function</span> <span class="fn">fullCheckout</span>(email: string, amount: <span class="kw">number</span>) {
+  <span class="cm">// Create or retrieve customer (~200ms)</span>
+  <span class="kw">const</span> customer = <span class="kw">await</span> <span class="acc">slowCustomers</span>.<span class="fn">create</span>({ email });
+
+  <span class="cm">// Create payment intent (~200ms)</span>
+  <span class="kw">const</span> intent = <span class="kw">await</span> <span class="acc">slowPaymentIntents</span>.<span class="fn">create</span>({
+    amount,
+    currency: <span class="str">'usd'</span>,
+    customer: customer.id,
+    automatic_payment_methods: { enabled: <span class="kw">true</span> }
+  });
+
+  <span class="cm">// Confirm the intent (~200ms) — in a real flow this happens client-side</span>
+  <span class="kw">const</span> confirmed = <span class="kw">await</span> <span class="acc">slowPaymentIntents</span>.<span class="fn">retrieve</span>(intent.id);
+  <span class="kw">return</span> confirmed;
+}
+</pre>
+    </div>
+  </div>
+
+  <!-- TESTING -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Test checkout UX, timeout, and webhook handling</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'stripe-loading')">Loading state</button>
+      <button class="tab" onclick="switchTab(this,'stripe-timeout')">Timeout</button>
+      <button class="tab" onclick="switchTab(this,'stripe-webhook')">Webhook</button>
+    </div>
+    <div id="stripe-loading" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { render, screen, fireEvent, waitFor } <span class="kw">from</span> <span class="str">'@testing-library/react'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { CheckoutButton } <span class="kw">from</span> <span class="str">'../src/components/CheckoutButton'</span>;
+
+<span class="fn">test</span>(<span class="str">'checkout button disables and shows "Processing..." during payment'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> mockCreate = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="str">'pi_test'</span>, client_secret: <span class="str">'pi_test_secret'</span>, status: <span class="str">'requires_payment_method'</span> }),
+    { p50: <span class="num">600</span>, p99: <span class="num">2000</span> }  <span class="cm">// realistic payment creation latency</span>
+  );
+
+  <span class="fn">render</span>(&lt;CheckoutButton amount={<span class="num">4999</span>} createFn={mockCreate} /&gt;);
+
+  <span class="fn">fireEvent</span>.<span class="fn">click</span>(<span class="fn">screen</span>.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: /buy now/i }));
+
+  <span class="cm">// Button must disable immediately on click — no double-charging</span>
+  <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByRole</span>(<span class="str">'button'</span>)).<span class="fn">toBeDisabled</span>();
+  <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByText</span>(<span class="str">/Processing/i</span>)).<span class="fn">toBeInTheDocument</span>();
+
+  <span class="kw">await</span> <span class="fn">waitFor</span>(() => {
+    <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByText</span>(<span class="str">/Payment successful/i</span>)).<span class="fn">toBeInTheDocument</span>();
+  }, { timeout: <span class="num">5000</span> });
+});
+</pre></div></div>
+
+    <div id="stripe-timeout" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { processPayment } <span class="kw">from</span> <span class="str">'../src/payments'</span>;
+
+<span class="fn">test</span>(<span class="str">'processPayment times out after 5s and does not double-charge'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> mockCreate = jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="str">'pi_test'</span>, status: <span class="str">'processing'</span> });
+
+  <span class="cm">// Simulate Stripe under heavy load</span>
+  <span class="kw">const</span> verySlowCreate = <span class="fn">withLatency</span>(mockCreate, { p50: <span class="num">6000</span>, p99: <span class="num">12000</span> });
+
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    <span class="fn">processPayment</span>({ amount: <span class="num">9999</span>, currency: <span class="str">'usd'</span> }, {
+      create: verySlowCreate,
+      timeoutMs: <span class="num">5000</span>
+    })
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'PaymentTimeoutError'</span>);
+
+  <span class="cm">// Verify idempotency key was used — same key means no duplicate charge</span>
+  <span class="fn">expect</span>(mockCreate).<span class="fn">toHaveBeenCalledWith</span>(
+    <span class="fn">expect</span>.<span class="fn">objectContaining</span>({
+      metadata: <span class="fn">expect</span>.<span class="fn">objectContaining</span>({ idempotencyKey: <span class="fn">expect</span>.<span class="fn">any</span>(String) })
+    })
+  );
+}, <span class="num">10000</span>);
+</pre></div></div>
+
+    <div id="stripe-webhook" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { handleWebhook } <span class="kw">from</span> <span class="str">'../src/webhooks/stripe'</span>;
+
+<span class="fn">test</span>(<span class="str">'webhook handler responds 200 before processing (async pattern)'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Webhook handler should ack immediately, then process async</span>
+  <span class="cm">// The DB write after the webhook can be slow</span>
+  <span class="kw">const</span> slowDbWrite = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="str">'order_1'</span> }),
+    <span class="str">'postgres'</span>
+  );
+
+  <span class="kw">const</span> event = {
+    type: <span class="str">'payment_intent.succeeded'</span>,
+    data: { object: { id: <span class="str">'pi_test'</span>, amount: <span class="num">4999</span>, currency: <span class="str">'usd'</span> } }
+  };
+
+  <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+  <span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">handleWebhook</span>(event, { dbWrite: slowDbWrite });
+  <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
+
+  <span class="cm">// Webhook must respond in &lt;1s regardless of how slow the downstream work is</span>
+  <span class="fn">expect</span>(response.status).<span class="fn">toBe</span>(<span class="num">200</span>);
+  <span class="fn">expect</span>(elapsed).<span class="fn">toBeLessThan</span>(<span class="num">100</span>);  <span class="cm">// ack immediately</span>
+});
+</pre></div></div>
+  </div>
+
+  <!-- INDIVIDUAL WRAPPING -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Wrap subscriptions and refunds</h2>
+    <p class="section-body">Every Stripe sub-resource follows the same pattern. Wrap only what you use — refunds may have different latency characteristics to model.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
+
+<span class="cm">// Subscriptions — use stripe preset</span>
+<span class="kw">const</span> <span class="acc">slowCreateSub</span> = <span class="fn">withLatency</span>(
+  stripe.subscriptions.create.<span class="fn">bind</span>(stripe.subscriptions),
+  <span class="str">'stripe'</span>
+);
+
+<span class="cm">// Refunds are typically processed faster</span>
+<span class="kw">const</span> <span class="acc">slowRefund</span> = <span class="fn">withLatency</span>(
+  stripe.refunds.create.<span class="fn">bind</span>(stripe.refunds),
+  { p50: <span class="num">150</span>, p99: <span class="num">1500</span> }
+);
+
+<span class="cm">// Checkout sessions (newer API)</span>
+<span class="kw">const</span> <span class="acc">slowCheckoutSession</span> = <span class="fn">withLatency</span>(
+  stripe.checkout.sessions.create.<span class="fn">bind</span>(stripe.checkout.sessions),
+  <span class="str">'stripe'</span>
+);
+
+<span class="kw">const</span> session = <span class="kw">await</span> <span class="acc">slowCheckoutSession</span>({
+  payment_method_types: [<span class="str">'card'</span>],
+  line_items: [{ price: <span class="str">'price_1234'</span>, quantity: <span class="num">1</span> }],
+  mode: <span class="str">'payment'</span>,
+  success_url: <span class="str">'https://example.com/success'</span>,
+  cancel_url: <span class="str">'https://example.com/cancel'</span>
+});
+</pre>
+    </div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Gate on environment — never slow real payments</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
+
+<span class="kw">const</span> isProd = process.env.<span class="acc">NODE_ENV</span> === <span class="str">'production'</span>;
+
+<span class="cm">// These are the only Stripe sub-resources used in this app</span>
+<span class="kw">export const</span> <span class="acc">payments</span> = isProd ? stripe.paymentIntents : <span class="fn">withLatencyAll</span>(stripe.paymentIntents, <span class="str">'stripe'</span>);
+<span class="kw">export const</span> <span class="acc">customers</span> = isProd ? stripe.customers : <span class="fn">withLatencyAll</span>(stripe.customers, <span class="str">'stripe'</span>);
+<span class="kw">export const</span> <span class="acc">subs</span>      = isProd ? stripe.subscriptions : <span class="fn">withLatencyAll</span>(stripe.subscriptions, <span class="str">'stripe'</span>);
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Idempotency keys are critical</div>
+      <p>When testing with realistic latency, always use idempotency keys on <code>create</code> calls. If your timeout fires and you retry, Stripe will return the same PaymentIntent rather than creating a duplicate charge. Your tests should verify this behavior.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Button disable on click</strong> — at p50 of 200ms, users will notice a non-disabled button and may click twice. Always disable immediately on first click.</li>
+        <li><strong>Idempotency key handling</strong> — on timeout, your retry must use the same idempotency key to avoid double-charging</li>
+        <li><strong>Card decline UX</strong> — the 0.2% error rate also models card declines; verify your error state is user-friendly, not just "Error"</li>
+        <li><strong>Subscription creation latency</strong> — subscription creation with a trial period involves multiple internal Stripe operations; budget for 500ms+</li>
+        <li><strong>Webhook 200 ack before processing</strong> — Stripe retries webhooks if you don't ack within 30s; always ack immediately and process asynchronously</li>
+        <li><strong>Checkout session expiry</strong> — if payment is slow and the session expires (30 minutes), does your UI handle the redirect gracefully?</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed Stripe integration</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> Stripe <span class="kw">from</span> <span class="str">'stripe'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> stripe = <span class="kw">new</span> <span class="fn">Stripe</span>(process.env.<span class="acc">STRIPE_SECRET_KEY</span>);
+
+<span class="cm">// Return type inferred: Promise&lt;Stripe.PaymentIntent&gt;</span>
+<span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
+  stripe.paymentIntents.create.<span class="fn">bind</span>(stripe.paymentIntents),
+  <span class="str">'stripe'</span>
+);
+
+<span class="kw">async function</span> <span class="fn">createIntent</span>(
+  amount: <span class="kw">number</span>,
+  options?: Stripe.PaymentIntentCreateParams
+): Promise&lt;Stripe.PaymentIntent&gt; {
+  <span class="kw">return</span> <span class="acc">slowCreate</span>({
+    amount,
+    currency: <span class="str">'usd'</span>,
+    automatic_payment_methods: { enabled: <span class="kw">true</span> },
+    ...options
+  });
+}
+
+<span class="cm">// Fully typed — amount, currency, status all have correct types</span>
+<span class="kw">const</span> intent: Stripe.PaymentIntent = <span class="kw">await</span> <span class="fn">createIntent</span>(<span class="num">4999</span>);
+console.<span class="fn">log</span>(intent.status);   <span class="cm">// 'requires_payment_method' | 'processing' | etc.</span>
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

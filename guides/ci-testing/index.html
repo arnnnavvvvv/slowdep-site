@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI testing — slowdep guides</title>
+<meta name="description" content="Add slowdep to your CI pipeline to catch timeout and retry bugs before they reach production.">
+<link rel="canonical" href="https://slowdeps.site/guides/ci-testing/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/why-not-settimeout/" class="nav-link active">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Guides<span>/</span>CI testing</div>
+    <h1 class="page-title">CI testing with realistic latency</h1>
+    <p class="page-desc">Add slowdep to your CI pipeline to catch timeout and retry bugs before they reach production.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">The gap</div>
+    <h2 class="section-title">Why CI latency matters</h2>
+    <p class="section-body">
+      There's a systematic gap between CI and production: your unit tests run with zero-latency
+      mocks, integration tests run against local services, and then production hits real network
+      latency, cache misses, and tail behavior. The bugs that live in this gap — timeout misconfiguration,
+      retry storms, circuit breakers that never trip — only surface in production.
+    </p>
+    <p class="section-body">
+      Adding slowdep to your CI pipeline closes this gap. A dedicated "latency tests" CI step runs
+      your integration tests with realistic latency profiles, catching the class of bugs that
+      zero-latency tests structurally cannot find.
+    </p>
+    <div class="callout">
+      <div class="callout-title">The rule of thumb</div>
+      <p>If your test suite would still pass if every dependency responded in 0ms, you're not testing latency-dependent behavior. Add slowdep to tests where latency characteristics affect correctness.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Configuration</div>
+    <h2 class="section-title">Configuring slowdep for CI</h2>
+    <p class="section-body">
+      Keep latency disabled locally by default so developer iteration stays fast.
+      Enable it in CI via an environment variable. This pattern lets you run the full
+      test suite quickly on a developer machine while ensuring latency tests run
+      on every CI build.
+    </p>
+    <div class="codeblock"><pre><span class="cm">// lib/testHelpers.ts</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> LATENCY_ENABLED = process.env.<span class="acc">SLOWDEP_ENABLED</span> === <span class="str">'true'</span>;
+
+<span class="cm">/**
+ * Wraps a function with realistic latency when SLOWDEP_ENABLED=true.
+ * In local development (default), returns the function unchanged.
+ */</span>
+<span class="kw">export function</span> <span class="fn">maybeSlowdep</span>&lt;T <span class="kw">extends</span> (...args: <span class="kw">any</span>[]) =&gt; <span class="fn">Promise</span>&lt;<span class="kw">any</span>&gt;&gt;(
+  fn: T,
+  preset: Parameters&lt;<span class="kw">typeof</span> withLatency&gt;[<span class="num">1</span>]
+): T {
+  <span class="kw">return</span> LATENCY_ENABLED ? <span class="fn">withLatency</span>(fn, preset) : fn;
+}
+
+<span class="cm">// usage in tests</span>
+<span class="kw">const</span> db = <span class="fn">maybeSlowdep</span>(realDb.query, <span class="str">'postgres'</span>);
+<span class="cm">// local: instant  |  CI (SLOWDEP_ENABLED=true): lognormal p50:5ms p99:200ms</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Test selection</div>
+    <h2 class="section-title">Which tests to add latency to</h2>
+    <p class="section-body">
+      Not every test benefits from realistic latency. Apply it selectively where latency
+      characteristics actually affect whether the test is meaningful.
+    </p>
+    <table class="cmp-table">
+      <tr><th>test type</th><th>add slowdep?</th><th>reason</th></tr>
+      <tr>
+        <td>unit tests</td>
+        <td><span class="no">no</span></td>
+        <td>unit tests mock dependencies; latency adds noise without signal</td>
+      </tr>
+      <tr>
+        <td>integration tests</td>
+        <td><span class="yes">yes</span></td>
+        <td>tests real code paths with realistic dependency behavior</td>
+      </tr>
+      <tr>
+        <td>retry / timeout tests</td>
+        <td><span class="yes">yes</span></td>
+        <td>these specifically test latency-dependent behavior</td>
+      </tr>
+      <tr>
+        <td>e2e tests</td>
+        <td><span class="partial">selectively</span></td>
+        <td>add for specific scenarios (slow network, timeout UX); not all flows</td>
+      </tr>
+      <tr>
+        <td>snapshot tests</td>
+        <td><span class="no">no</span></td>
+        <td>UI snapshots don't depend on latency timing</td>
+      </tr>
+      <tr>
+        <td>circuit breaker tests</td>
+        <td><span class="yes">yes</span></td>
+        <td>circuit breakers trip on slow failures, not fast ones</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Time budget</div>
+    <h2 class="section-title">CI time budget</h2>
+    <p class="section-body">
+      Realistic latency slows down tests — that's the point, but it needs to be managed.
+      A test that takes 5ms without slowdep might take 200ms with it. At 1000 tests,
+      that's 200 seconds of added time. These strategies keep CI fast.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Separate CI step for latency tests</div>
+          <div class="step-body">Tag latency-sensitive tests (e.g., <code>@latency</code> Jest tag or a separate <code>*.latency.test.ts</code> suffix) and run them as a parallel CI job. Regular tests remain fast; latency tests run alongside them.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Use lower p99 in CI vs staging</div>
+          <div class="step-body">In CI, configure p99 at 2–5× p50 rather than the full production p99. This exercises the distribution shape without adding extreme tail waits. Reserve full production p99 for staging environment tests.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Parallelize test suites</div>
+          <div class="step-body">Use Jest's <code>--maxWorkers</code> or Vitest's <code>--pool=threads</code> to run test files in parallel. Latency tests benefit most from parallelization since they spend most time waiting.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Reproducibility</div>
+    <h2 class="section-title">Deterministic CI</h2>
+    <p class="section-body">
+      Probabilistic latency means tests can occasionally fail when tail samples are sampled.
+      For deterministic CI, seed <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">Math.random</code> at the start of each CI run.
+      The same seed produces the same latency samples every time, making failures
+      reliably reproducible.
+    </p>
+    <div class="codeblock"><pre><span class="cm">// jest.setup.ts — seed Math.random for deterministic CI</span>
+<span class="kw">if</span> (process.env.<span class="acc">SLOWDEP_SEED</span>) {
+  <span class="kw">const</span> seed = parseInt(process.env.<span class="acc">SLOWDEP_SEED</span>, <span class="num">10</span>);
+  <span class="cm">// simple seeded PRNG (use a proper implementation in production)</span>
+  <span class="kw">let</span> s = seed;
+  Math.random = () =&gt; {
+    s = (s * <span class="num">1664525</span> + <span class="num">1013904223</span>) &gt;&gt;&gt; <span class="num">0</span>;
+    <span class="kw">return</span> s / <span class="num">0xFFFFFFFF</span>;
+  };
+}
+
+<span class="cm">// then in CI: SLOWDEP_SEED=12345 jest</span>
+<span class="cm">// same seed = same latency samples = reproducible failures</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">GitHub Actions</div>
+    <h2 class="section-title">Example CI config</h2>
+    <p class="section-body">
+      A GitHub Actions workflow that runs unit tests and latency tests as parallel jobs.
+      Latency tests only run when there are changes to files that exercise latency-dependent behavior.
+    </p>
+    <div class="codeblock"><pre><span class="cm"># .github/workflows/ci.yml</span>
+<span class="acc">name</span>: CI
+
+<span class="acc">on</span>:
+  <span class="acc">push</span>:
+    <span class="acc">branches</span>: [main]
+  <span class="acc">pull_request</span>:
+
+<span class="acc">jobs</span>:
+  <span class="acc">unit-tests</span>:
+    <span class="acc">runs-on</span>: ubuntu-latest
+    <span class="acc">steps</span>:
+      - <span class="acc">uses</span>: actions/checkout@v4
+      - <span class="acc">uses</span>: actions/setup-node@v4
+        <span class="acc">with</span>:
+          <span class="acc">node-version</span>: <span class="str">'20'</span>
+      - <span class="acc">run</span>: npm ci
+      - <span class="acc">run</span>: npm test
+        <span class="acc">env</span>:
+          <span class="acc">NODE_ENV</span>: test
+
+  <span class="acc">latency-tests</span>:
+    <span class="acc">runs-on</span>: ubuntu-latest
+    <span class="acc">steps</span>:
+      - <span class="acc">uses</span>: actions/checkout@v4
+      - <span class="acc">uses</span>: actions/setup-node@v4
+        <span class="acc">with</span>:
+          <span class="acc">node-version</span>: <span class="str">'20'</span>
+      - <span class="acc">run</span>: npm ci
+      - <span class="acc">run</span>: npm run test:latency
+        <span class="acc">env</span>:
+          <span class="acc">NODE_ENV</span>: test
+          <span class="acc">SLOWDEP_ENABLED</span>: <span class="str">'true'</span>
+          <span class="acc">SLOWDEP_SEED</span>: <span class="str">'42'</span>
+        <span class="acc">timeout-minutes</span>: <span class="num">10</span></pre></div>
+    <div class="callout tip">
+      <div class="callout-title">package.json scripts</div>
+      <p>Add <code>"test:latency": "jest --testPathPattern=\\.latency\\.test\\.ts$ --maxWorkers=4"</code> to your package.json. Latency tests live in <code>*.latency.test.ts</code> files alongside your regular tests.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

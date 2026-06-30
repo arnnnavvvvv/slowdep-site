@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + AWS S3 — integration</title>
+<meta name="description" content="Simulate realistic S3 latency (p50: 30ms, p99: 500ms) for uploads and downloads. Test timeout and retry behavior for file operations.">
+<link rel="canonical" href="https://slowdeps.site/integrations/aws-s3/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>AWS S3</div>
+    <h1 class="page-title">slowdep + AWS S3</h1>
+    <p class="page-desc">Simulate realistic S3 latency (p50: 30ms, p99: 500ms) for uploads and downloads. Test timeout and retry behavior for file operations before your users notice.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">s3 latency profile</h2>
+    <p class="section-body">The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'s3'</code> preset models the command overhead (metadata, signature, routing) — not the transfer time of the object body, which depends on file size and bandwidth. For small objects (&lt;1MB), the preset captures the dominant latency factor.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">s3</span>
+        <span class="preset-val">30ms</span>
+        <span class="preset-val">200ms</span>
+        <span class="preset-val">500ms</span>
+        <span class="preset-err">0.1%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">S3 latency vs transfer time</div>
+      <p>The preset covers the API round-trip latency — the time before you start receiving bytes. For large file uploads/downloads, transfer time dominates. To model a 5MB file upload over a typical connection, add the expected transfer time to the p50/p99 values.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap s3Client.send</h2>
+    <p class="section-body">The AWS SDK v3 uses a universal <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">client.send(command)</code> pattern. Wrapping <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">send</code> covers all operations — PutObject, GetObject, DeleteObject, ListObjects — in one line.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { S3Client, PutObjectCommand, GetObjectCommand } <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> s3 = <span class="kw">new</span> <span class="fn">S3Client</span>({ region: process.env.<span class="acc">AWS_REGION</span> });
+
+<span class="cm">// Wrap the universal send method — covers every S3 command</span>
+<span class="kw">const</span> <span class="acc">slowSend</span> = <span class="fn">withLatency</span>(s3.send.<span class="fn">bind</span>(s3), <span class="str">'s3'</span>);
+
+<span class="cm">// Upload a file</span>
+<span class="kw">await</span> <span class="acc">slowSend</span>(<span class="kw">new</span> <span class="fn">PutObjectCommand</span>({
+  Bucket: process.env.<span class="acc">S3_BUCKET</span>,
+  Key: <span class="str">`uploads/</span>${userId}<span class="str">/avatar.png`</span>,
+  Body: imageBuffer,
+  ContentType: <span class="str">'image/png'</span>
+}));
+
+<span class="cm">// Download a file</span>
+<span class="kw">const</span> response = <span class="kw">await</span> <span class="acc">slowSend</span>(<span class="kw">new</span> <span class="fn">GetObjectCommand</span>({
+  Bucket: process.env.<span class="acc">S3_BUCKET</span>,
+  Key: <span class="str">`uploads/</span>${userId}<span class="str">/avatar.png`</span>
+}));
+</pre>
+    </div>
+  </div>
+
+  <!-- WRAPPING SPECIFIC COMMANDS -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Wrap specific command functions</h2>
+    <p class="section-body">If you prefer, wrap helper functions that construct and send specific commands. This gives you more control over latency profiles per operation type.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> {
+  S3Client, PutObjectCommand, GetObjectCommand,
+  DeleteObjectCommand, ListObjectsV2Command
+} <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> s3 = <span class="kw">new</span> <span class="fn">S3Client</span>({ region: process.env.<span class="acc">AWS_REGION</span> });
+<span class="kw">const</span> BUCKET = process.env.<span class="acc">S3_BUCKET</span>!;
+
+<span class="cm">// Build typed wrappers around each operation</span>
+<span class="kw">async function</span> <span class="fn">putObject</span>(key: string, body: Buffer | string, contentType: string) {
+  <span class="kw">return</span> s3.<span class="fn">send</span>(<span class="kw">new</span> <span class="fn">PutObjectCommand</span>({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType }));
+}
+
+<span class="kw">async function</span> <span class="fn">getObject</span>(key: string) {
+  <span class="kw">return</span> s3.<span class="fn">send</span>(<span class="kw">new</span> <span class="fn">GetObjectCommand</span>({ Bucket: BUCKET, Key: key }));
+}
+
+<span class="kw">async function</span> <span class="fn">deleteObject</span>(key: string) {
+  <span class="kw">return</span> s3.<span class="fn">send</span>(<span class="kw">new</span> <span class="fn">DeleteObjectCommand</span>({ Bucket: BUCKET, Key: key }));
+}
+
+<span class="cm">// Wrap each function individually — easy to disable per operation</span>
+<span class="kw">export const</span> <span class="acc">storage</span> = {
+  put:    <span class="fn">withLatency</span>(putObject, <span class="str">'s3'</span>),
+  get:    <span class="fn">withLatency</span>(getObject, <span class="str">'s3'</span>),
+  delete: <span class="fn">withLatency</span>(deleteObject, <span class="str">'s3'</span>),
+};
+
+<span class="cm">// Clean, typed, realistic</span>
+<span class="kw">await</span> <span class="acc">storage</span>.<span class="fn">put</span>(<span class="str">'docs/report.pdf'</span>, pdfBuffer, <span class="str">'application/pdf'</span>);
+<span class="kw">const</span> file = <span class="kw">await</span> <span class="acc">storage</span>.<span class="fn">get</span>(<span class="str">'docs/report.pdf'</span>);
+</pre>
+    </div>
+  </div>
+
+  <!-- PRESIGNED URL FLOW -->
+  <div class="section">
+    <div class="section-eyebrow">Presigned URLs</div>
+    <h2 class="section-title">Test the presigned URL upload flow</h2>
+    <p class="section-body">Many apps generate presigned URLs server-side and upload client-side. The presigned URL generation is the S3 API call — wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">getSignedUrl</code> to test the server's role in the flow.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { S3Client, PutObjectCommand } <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> { getSignedUrl } <span class="kw">from</span> <span class="str">'@aws-sdk/s3-request-presigner'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> s3 = <span class="kw">new</span> <span class="fn">S3Client</span>({ region: process.env.<span class="acc">AWS_REGION</span> });
+
+<span class="cm">// getSignedUrl is a standalone async function — wrap it directly</span>
+<span class="kw">const</span> <span class="acc">slowGetSignedUrl</span> = <span class="fn">withLatency</span>(getSignedUrl, <span class="str">'s3'</span>);
+
+<span class="cm">// Server-side: generate a presigned URL for the client to upload to</span>
+<span class="kw">async function</span> <span class="fn">generateUploadUrl</span>(key: string, contentType: string) {
+  <span class="kw">const</span> command = <span class="kw">new</span> <span class="fn">PutObjectCommand</span>({
+    Bucket: process.env.<span class="acc">S3_BUCKET</span>,
+    Key: key,
+    ContentType: contentType
+  });
+
+  <span class="cm">// This is the S3 API call — it returns a signed URL, not the file</span>
+  <span class="kw">const</span> url = <span class="kw">await</span> <span class="acc">slowGetSignedUrl</span>(s3, command, { expiresIn: <span class="num">3600</span> });
+  <span class="kw">return</span> url;
+}
+
+<span class="cm">// Test: does your upload endpoint respond in time with the presigned URL?</span>
+<span class="kw">const</span> uploadUrl = <span class="kw">await</span> <span class="fn">generateUploadUrl</span>(<span class="str">`avatars/</span>${userId}<span class="str">.jpg`</span>, <span class="str">'image/jpeg'</span>);
+</pre>
+    </div>
+  </div>
+
+  <!-- TESTING -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Test upload timeout and retry</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'s3-timeout')">Upload timeout</button>
+      <button class="tab" onclick="switchTab(this,'s3-retry')">Retry on error</button>
+    </div>
+    <div id="s3-timeout" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { uploadAvatar } <span class="kw">from</span> <span class="str">'../src/uploads'</span>;
+
+<span class="fn">test</span>(<span class="str">'uploadAvatar times out after 2s and returns error'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Simulate S3 under load or large file transfer</span>
+  <span class="kw">const</span> slowSend = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ ETag: <span class="str">'"abc123"'</span> }),
+    { p50: <span class="num">3000</span>, p99: <span class="num">8000</span> }
+  );
+
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    <span class="fn">uploadAvatar</span>(userId, imageBuffer, { send: slowSend, timeoutMs: <span class="num">2000</span> })
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'UploadTimeoutError'</span>);
+}, <span class="num">5000</span>);
+</pre></div></div>
+
+    <div id="s3-retry" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'upload retries on S3 503 SlowDown and succeeds'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> slowDownError = <span class="fn">Object</span>.<span class="fn">assign</span>(
+    <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'SlowDown'</span>),
+    { name: <span class="str">'SlowDown'</span>, $retryable: { throttling: <span class="kw">true</span> } }
+  );
+
+  <span class="kw">const</span> mockSend = jest.<span class="fn">fn</span>()
+    .<span class="fn">mockRejectedValueOnce</span>(slowDownError)
+    .<span class="fn">mockResolvedValueOnce</span>({ ETag: <span class="str">'"abc123"'</span>, VersionId: <span class="str">'v1'</span> });
+
+  <span class="kw">const</span> slowSend = <span class="fn">withLatency</span>(mockSend, <span class="str">'s3'</span>);
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">uploadWithRetry</span>(slowSend, imageBuffer, {
+    maxRetries: <span class="num">3</span>,
+    backoffMs: <span class="num">500</span>
+  });
+
+  <span class="fn">expect</span>(result.ETag).<span class="fn">toBe</span>(<span class="str">'"abc123"'</span>);
+  <span class="fn">expect</span>(mockSend).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">2</span>);
+});
+</pre></div></div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Conditional wrapping with env check</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> { S3Client } <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> s3 = <span class="kw">new</span> <span class="fn">S3Client</span>({ region: process.env.<span class="acc">AWS_REGION</span> });
+
+<span class="kw">const</span> rawSend = s3.send.<span class="fn">bind</span>(s3);
+
+<span class="cm">// Gate on environment — never add latency to real AWS calls in production</span>
+<span class="kw">export const</span> <span class="acc">send</span> = process.env.<span class="acc">NODE_ENV</span> !== <span class="str">'production'</span>
+  ? <span class="fn">withLatency</span>(rawSend, <span class="str">'s3'</span>)
+  : rawSend;
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">S3 with LocalStack</div>
+      <p>If you run tests against <a href="https://localstack.cloud" style="color:var(--blue)">LocalStack</a>, add slowdep to simulate the real S3 latency that LocalStack skips. Point <code>endpoint</code> to LocalStack, then wrap <code>send</code> with slowdep for realistic timing.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Upload progress UX</strong> — at p50 of 30ms for small files, do you even show a progress bar? At p99 of 500ms, users expect feedback.</li>
+        <li><strong>Upload timeout and retry</strong> — large file uploads should have per-part retry, not whole-file retry. Verify your multipart upload logic handles errors.</li>
+        <li><strong>Presigned URL expiry</strong> — if URL generation is slow and the client waits, does the URL still have enough time to live?</li>
+        <li><strong>SlowDown (503) handling</strong> — S3 returns 503 SlowDown under high request rates; verify your code backs off and retries correctly.</li>
+        <li><strong>Cross-region latency</strong> — cross-region S3 requests are significantly slower; use a custom profile with higher p50/p99 to model this.</li>
+        <li><strong>Concurrent upload limits</strong> — if you upload many files concurrently, S3 SlowDown errors increase; test your concurrency limits.</li>
+        <li><strong>Download during rendering</strong> — if your server fetches from S3 before responding to a user, that 30ms p50 adds directly to TTFB.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed S3 send wrapper</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> { S3Client, PutObjectCommand, GetObjectCommandOutput } <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { ServiceInputTypes, ServiceOutputTypes } <span class="kw">from</span> <span class="str">'@aws-sdk/client-s3'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { Command } <span class="kw">from</span> <span class="str">'@smithy/types'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> s3 = <span class="kw">new</span> <span class="fn">S3Client</span>({ region: process.env.<span class="acc">AWS_REGION</span> });
+
+<span class="cm">// send is generic — return type matches the command type</span>
+<span class="kw">const</span> <span class="acc">slowSend</span> = <span class="fn">withLatency</span>(s3.send.<span class="fn">bind</span>(s3), <span class="str">'s3'</span>);
+
+<span class="cm">// TypeScript infers the correct output type per command</span>
+<span class="kw">const</span> putResult = <span class="kw">await</span> <span class="acc">slowSend</span>(<span class="kw">new</span> <span class="fn">PutObjectCommand</span>({
+  Bucket: <span class="str">'my-bucket'</span>,
+  Key: <span class="str">'file.txt'</span>,
+  Body: <span class="str">'hello'</span>
+}));
+<span class="cm">// putResult.ETag is typed as string | undefined</span>
+console.<span class="fn">log</span>(putResult.ETag);
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

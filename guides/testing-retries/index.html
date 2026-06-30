@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testing retry logic — slowdep guides</title>
+<meta name="description" content="Use slowdep's errorRate to reliably trigger the failure paths that exercise your retry and backoff logic.">
+<link rel="canonical" href="https://slowdeps.site/guides/testing-retries/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/why-not-settimeout/" class="nav-link active">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Guides<span>/</span>Testing retries</div>
+    <h1 class="page-title">Testing retry logic</h1>
+    <p class="page-desc">Use slowdep's errorRate to reliably trigger the failure paths that exercise your retry and backoff logic.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">The challenge</div>
+    <h2 class="section-title">Why retry logic is hard to test</h2>
+    <p class="section-body">
+      Retry logic is the kind of code that looks simple, gets written once, and then never gets properly
+      tested. The path that matters — the one where the first attempt fails and a retry succeeds — is hard
+      to exercise reliably. You can't control when a real service fails, and returning a hardcoded error
+      from a mock means your test always fails or always succeeds. Neither tells you that your retry
+      logic actually works under realistic conditions.
+    </p>
+    <p class="section-body">
+      The other problem: retry logic interacts with latency. Exponential backoff only makes sense if
+      retries are genuinely slow. A test where every call completes in 0ms can't tell you whether your
+      backoff delays are too short, too long, or correctly jittered.
+    </p>
+    <div class="callout warn">
+      <div class="callout-title">Common mistake</div>
+      <p>Testing retries with a mock that always succeeds on the second attempt is not testing retry logic — it's testing that your code calls the function twice when the first call returns an error you hardcoded.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Basics</div>
+    <h2 class="section-title">Using errorRate to force failures</h2>
+    <p class="section-body">
+      slowdep's <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">errorRate</code> option injects errors probabilistically.
+      Set it to 0.5 and half of all calls will throw. This lets you write tests where your retry
+      logic is exercised naturally — the first attempt might fail, or the second, or both.
+      With enough test runs (or a high enough errorRate), you cover the path reliably.
+    </p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> <span class="acc">flakyClient</span> = <span class="fn">withLatency</span>(realClient.query, {
+  p50: <span class="num">5</span>,
+  p99: <span class="num">50</span>,
+  errorRate: <span class="num">0.5</span>,   <span class="cm">// 50% of calls throw</span>
+});
+
+<span class="cm">// assert that your retry wrapper handles failures</span>
+<span class="kw">it</span>(<span class="str">'retries on transient failure'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">let</span> attempts = <span class="num">0</span>;
+  <span class="kw">const</span> tracked = <span class="kw">async</span> (...args) =&gt; {
+    attempts++;
+    <span class="kw">return</span> <span class="fn">flakyClient</span>(...args);
+  };
+
+  <span class="cm">// run many times to ensure retries are exercised</span>
+  <span class="kw">const</span> results = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">allSettled</span>(
+    Array.<span class="fn">from</span>({ length: <span class="num">20</span> }, () =&gt; <span class="fn">withRetry</span>(tracked, <span class="num">3</span>))
+  );
+
+  <span class="cm">// with 50% error rate and 20 calls, retries definitely fired</span>
+  <span class="fn">expect</span>(attempts).<span class="fn">toBeGreaterThan</span>(<span class="num">20</span>); <span class="cm">// more attempts than calls = retries happened</span>
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Backoff</div>
+    <h2 class="section-title">Testing exponential backoff</h2>
+    <p class="section-body">
+      Exponential backoff requires testing that delays actually increase between retries. Combine slowdep
+      with <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">jest.useFakeTimers()</code> to control the clock and assert
+      that <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">setTimeout</code> was called with increasing delays.
+    </p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">describe</span>(<span class="str">'exponential backoff'</span>, () =&gt; {
+  <span class="fn">beforeEach</span>(() =&gt; jest.<span class="fn">useFakeTimers</span>());
+  <span class="fn">afterEach</span>(() =&gt; jest.<span class="fn">useRealTimers</span>());
+
+  <span class="fn">it</span>(<span class="str">'doubles delay on each retry'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> alwaysFails = <span class="fn">withLatency</span>(
+      <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'service unavailable'</span>); },
+      { p50: <span class="num">5</span>, p99: <span class="num">50</span>, errorRate: <span class="num">1.0</span> }
+    );
+
+    <span class="kw">const</span> delays: <span class="acc">number</span>[] = [];
+    <span class="kw">const</span> originalSetTimeout = global.setTimeout;
+    jest.<span class="fn">spyOn</span>(global, <span class="str">'setTimeout'</span>).<span class="fn">mockImplementation</span>((fn, delay) =&gt; {
+      delays.<span class="fn">push</span>(delay <span class="kw">as</span> <span class="acc">number</span>);
+      <span class="kw">return</span> <span class="fn">originalSetTimeout</span>(fn, <span class="num">0</span>); <span class="cm">// don't actually wait</span>
+    });
+
+    <span class="kw">await</span> <span class="fn">expect</span>(<span class="fn">withRetry</span>(alwaysFails, <span class="num">3</span>)).<span class="fn">rejects</span>.<span class="fn">toThrow</span>();
+    <span class="fn">expect</span>(delays[<span class="num">0</span>]).<span class="fn">toBeLessThan</span>(delays[<span class="num">1</span>]);  <span class="cm">// 100ms &lt; 200ms</span>
+    <span class="fn">expect</span>(delays[<span class="num">1</span>]).<span class="fn">toBeLessThan</span>(delays[<span class="num">2</span>]);  <span class="cm">// 200ms &lt; 400ms</span>
+  });
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Limits</div>
+    <h2 class="section-title">Testing max retry limits</h2>
+    <p class="section-body">
+      Set <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">errorRate: 1.0</code> to guarantee every call fails.
+      This creates a deterministic test that your retry wrapper gives up after exactly N attempts — not N+1,
+      not forever, but the precise limit you configured.
+    </p>
+    <div class="codeblock"><pre><span class="fn">it</span>(<span class="str">'gives up after 3 attempts'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">let</span> callCount = <span class="num">0</span>;
+  <span class="kw">const</span> alwaysFails = <span class="fn">withLatency</span>(
+    <span class="kw">async</span> () =&gt; {
+      callCount++;
+      <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'permanent failure'</span>);
+    },
+    { p50: <span class="num">5</span>, p99: <span class="num">50</span>, errorRate: <span class="num">1.0</span> }
+  );
+
+  <span class="kw">await</span> <span class="fn">expect</span>(<span class="fn">withRetry</span>(alwaysFails, { maxAttempts: <span class="num">3</span> }))
+    .<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'permanent failure'</span>);
+
+  <span class="fn">expect</span>(callCount).<span class="fn">toBe</span>(<span class="num">3</span>); <span class="cm">// exactly 3, no more</span>
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Jitter</div>
+    <h2 class="section-title">Testing jitter in backoff</h2>
+    <p class="section-body">
+      Without jitter, all retrying clients retry at exactly the same time — a thundering herd.
+      A good backoff implementation randomizes the delay. Test this by verifying that consecutive
+      retry delays differ, even when starting from the same failure.
+    </p>
+    <div class="codeblock"><pre><span class="fn">it</span>(<span class="str">'uses different delays across retry attempts'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> alwaysFails = <span class="fn">withLatency</span>(
+    <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'fail'</span>); },
+    { p50: <span class="num">1</span>, p99: <span class="num">5</span>, errorRate: <span class="num">1.0</span> }
+  );
+
+  <span class="kw">const</span> collectedDelays: <span class="acc">number</span>[][] = [];
+
+  <span class="cm">// run the retry logic twice independently</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">2</span>; i++) {
+    <span class="kw">const</span> run: <span class="acc">number</span>[] = [];
+    jest.<span class="fn">spyOn</span>(global, <span class="str">'setTimeout'</span>).<span class="fn">mockImplementation</span>((fn, d) =&gt; {
+      run.<span class="fn">push</span>(d <span class="kw">as</span> <span class="acc">number</span>);
+      <span class="kw">return</span> global.setTimeout(fn, <span class="num">0</span>);
+    });
+    <span class="kw">await</span> <span class="fn">expect</span>(<span class="fn">withRetry</span>(alwaysFails, <span class="num">2</span>)).<span class="fn">rejects</span>.<span class="fn">toThrow</span>();
+    collectedDelays.<span class="fn">push</span>(run);
+    jest.<span class="fn">restoreAllMocks</span>();
+  }
+
+  <span class="cm">// delays across runs should not be identical (jitter present)</span>
+  <span class="fn">expect</span>(collectedDelays[<span class="num">0</span>][<span class="num">0</span>]).<span class="fn">not</span>.<span class="fn">toBe</span>(collectedDelays[<span class="num">1</span>][<span class="num">0</span>]);
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Full example</div>
+    <h2 class="section-title">A complete fetchWithRetry test suite</h2>
+    <p class="section-body">
+      Here's a <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">fetchWithRetry</code> implementation and a full test suite
+      exercising success, partial failure, and exhausted retries — all using slowdep.
+    </p>
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'t-impl')">implementation</button>
+      <button class="tab" onclick="switchTab(this,'t-test')">tests</button>
+    </div>
+    <div id="t-impl" class="code-panel active">
+      <div class="code-block"><pre><span class="cm">// fetchWithRetry.ts</span>
+<span class="kw">export async function</span> <span class="fn">fetchWithRetry</span>&lt;T&gt;(
+  fn: () =&gt; <span class="fn">Promise</span>&lt;T&gt;,
+  options: { maxAttempts: <span class="acc">number</span>; baseDelay: <span class="acc">number</span> } = { maxAttempts: <span class="num">3</span>, baseDelay: <span class="num">100</span> }
+): <span class="fn">Promise</span>&lt;T&gt; {
+  <span class="kw">let</span> lastError: <span class="acc">Error</span>;
+  <span class="kw">for</span> (<span class="kw">let</span> attempt = <span class="num">0</span>; attempt &lt; options.maxAttempts; attempt++) {
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fn</span>();
+    } <span class="kw">catch</span> (err) {
+      lastError = err <span class="kw">as</span> <span class="acc">Error</span>;
+      <span class="kw">if</span> (attempt &lt; options.maxAttempts - <span class="num">1</span>) {
+        <span class="kw">const</span> jitter = <span class="num">0.5</span> + Math.<span class="fn">random</span>() * <span class="num">0.5</span>;
+        <span class="kw">const</span> delay = options.baseDelay * ((<span class="num">2</span> ** attempt) * jitter);
+        <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, delay));
+      }
+    }
+  }
+  <span class="kw">throw</span> lastError!;
+}</pre></div>
+    </div>
+    <div id="t-test" class="code-panel">
+      <div class="code-block"><pre><span class="cm">// fetchWithRetry.test.ts</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { <span class="acc">fetchWithRetry</span> } <span class="kw">from</span> <span class="str">'./fetchWithRetry'</span>;
+
+<span class="fn">describe</span>(<span class="str">'fetchWithRetry'</span>, () =&gt; {
+  <span class="fn">beforeEach</span>(() =&gt; jest.<span class="fn">useFakeTimers</span>());
+  <span class="fn">afterEach</span>(() =&gt; jest.<span class="fn">useRealTimers</span>());
+
+  <span class="fn">it</span>(<span class="str">'succeeds on first attempt when no errors'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> fn = <span class="fn">withLatency</span>(<span class="kw">async</span> () =&gt; <span class="str">'ok'</span>, { p50: <span class="num">5</span>, p99: <span class="num">50</span>, errorRate: <span class="num">0</span> });
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">fetchWithRetry</span>(fn);
+    <span class="fn">expect</span>(result).<span class="fn">toBe</span>(<span class="str">'ok'</span>);
+  });
+
+  <span class="fn">it</span>(<span class="str">'retries and eventually succeeds with partial error rate'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">let</span> calls = <span class="num">0</span>;
+    <span class="cm">// errorRate 0.7 means ~30% chance of success per call</span>
+    <span class="cm">// with 3 attempts: (1 - 0.7^3) = 97% chance of overall success</span>
+    <span class="kw">const</span> fn = <span class="fn">withLatency</span>(
+      <span class="kw">async</span> () =&gt; { calls++; <span class="kw">return</span> <span class="str">'data'</span>; },
+      { p50: <span class="num">5</span>, p99: <span class="num">50</span>, errorRate: <span class="num">0.7</span> }
+    );
+    jest.<span class="fn">spyOn</span>(global, <span class="str">'setTimeout'</span>).<span class="fn">mockImplementation</span>((fn) =&gt;
+      globalThis.setTimeout(fn, <span class="num">0</span>)
+    );
+    <span class="kw">const</span> results = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">allSettled</span>(
+      Array.<span class="fn">from</span>({ length: <span class="num">50</span> }, () =&gt; <span class="fn">fetchWithRetry</span>(fn))
+    );
+    <span class="kw">const</span> fulfilled = results.<span class="fn">filter</span>(r =&gt; r.status === <span class="str">'fulfilled'</span>);
+    <span class="fn">expect</span>(fulfilled.length).<span class="fn">toBeGreaterThan</span>(<span class="num">40</span>); <span class="cm">// most succeed via retry</span>
+    <span class="fn">expect</span>(calls).<span class="fn">toBeGreaterThan</span>(<span class="num">50</span>);             <span class="cm">// retries happened</span>
+  });
+
+  <span class="fn">it</span>(<span class="str">'gives up after maxAttempts'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">let</span> attempts = <span class="num">0</span>;
+    <span class="kw">const</span> fn = <span class="fn">withLatency</span>(
+      <span class="kw">async</span> () =&gt; { attempts++; <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'down'</span>); },
+      { p50: <span class="num">5</span>, p99: <span class="num">50</span>, errorRate: <span class="num">1.0</span> }
+    );
+    jest.<span class="fn">spyOn</span>(global, <span class="str">'setTimeout'</span>).<span class="fn">mockImplementation</span>((fn) =&gt;
+      globalThis.setTimeout(fn, <span class="num">0</span>)
+    );
+    <span class="kw">await</span> <span class="fn">expect</span>(<span class="fn">fetchWithRetry</span>(fn, { maxAttempts: <span class="num">3</span>, baseDelay: <span class="num">100</span> }))
+      .<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'down'</span>);
+    <span class="fn">expect</span>(attempts).<span class="fn">toBe</span>(<span class="num">3</span>);
+  });
+});</pre></div>
+    </div>
+    <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

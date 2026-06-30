@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core concepts — slowdep docs</title>
+<meta name="description" content="Why lognormal latency matters and how slowdep models real-world dependency behavior.">
+<link rel="canonical" href="https://slowdeps.site/docs/concepts/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>Concepts</div>
+    <h1 class="page-title">Core concepts</h1>
+    <p class="page-desc">Why lognormal latency matters and how slowdep models real-world dependency behavior.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">The problem</div>
+    <h2 class="section-title">Why flat delays lie</h2>
+    <p class="section-body">The standard approach to simulating a slow dependency in tests is <code>await new Promise(r => setTimeout(r, 100))</code>. It's simple, readable, and wrong.</p>
+    <p class="section-body">The problem isn't the 100ms — it's the flatness. Every single simulated call takes exactly 100ms. No variance. No jitter. No occasional 800ms outlier. Real production dependencies don't behave this way. A Postgres query might take 4ms 95% of the time, but every few thousand queries it takes 300ms. That 300ms case is where your timeout fires, your retry budget runs out, or your circuit breaker trips.</p>
+    <p class="section-body">When you test with a flat delay, you never see those cases. You ship code that handles the fast path perfectly and the slow path not at all. The first time your code encounters real tail latency in production, it fails.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">The false confidence problem</div>
+      <p>A test suite that passes with <code>setTimeout(fn, 100)</code> as the simulated database gives you false confidence. It proves your code works when the database is always 100ms — a scenario that never occurs in reality.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">The model</div>
+    <h2 class="section-title">The lognormal distribution</h2>
+    <p class="section-body">Real latency follows a <strong>lognormal distribution</strong>: a shape where the logarithm of the variable is normally distributed. This produces three observable characteristics that match real systems:</p>
+
+    <div class="prose" style="margin-top:1rem;">
+      <ul>
+        <li><strong>A floor near zero.</strong> Latency cannot be negative, and there's a practical lower bound (network RTT, CPU time).</li>
+        <li><strong>Most values cluster near the median.</strong> The typical case is fast. Your p50 is what users experience most of the time.</li>
+        <li><strong>A long right tail.</strong> A small fraction of requests are much slower than the median — GC pauses, lock contention, cold caches, network retransmits.</li>
+      </ul>
+    </div>
+
+    <p class="section-body" style="margin-top:1rem;">slowdep fits a lognormal distribution using two parameters you already know: p50 and p99. The math:</p>
+
+    <div class="codeblock"><pre><span class="cm">// Fit the distribution from p50 and p99</span>
+mu    = ln(p50)
+sigma = (ln(p99) - mu) / <span class="num">2.326</span>   <span class="cm">// 2.326 = z-score of the 99th percentile</span>
+
+<span class="cm">// Sample using Box-Muller transform</span>
+z     = sqrt(-<span class="num">2</span> * ln(u1)) * cos(<span class="num">2</span>p * u2)   <span class="cm">// standard normal</span>
+delay = exp(mu + sigma * z)               <span class="cm">// lognormal sample</span>
+delay = min(delay, p99 * <span class="num">3</span>)              <span class="cm">// cap at 3x p99</span></pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">The cap at <code>p99 * 3</code> prevents the theoretical infinite tail from producing absurdly long delays in tests. It's a practical approximation of p999 behavior.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Percentiles</div>
+    <h2 class="section-title">p50, p95, p99 explained</h2>
+    <p class="section-body">Percentiles describe the distribution of latency across a population of requests. "p99 = 200ms" means that 99 out of 100 requests complete in under 200ms — and 1 out of 100 takes 200ms or longer.</p>
+
+    <table class="param-table" style="margin-top:1rem;">
+      <tr><th>percentile</th><th>meaning</th><th>practical significance</th></tr>
+      <tr>
+        <td class="param-name">p50</td>
+        <td class="param-desc">Half of requests are faster, half are slower</td>
+        <td class="param-desc">The "typical" experience. What most users see most of the time.</td>
+      </tr>
+      <tr>
+        <td class="param-name">p95</td>
+        <td class="param-desc">95% of requests are faster</td>
+        <td class="param-desc">The "somewhat unlucky" case. A useful SLO target that covers most users.</td>
+      </tr>
+      <tr>
+        <td class="param-name">p99</td>
+        <td class="param-desc">99% of requests are faster</td>
+        <td class="param-desc">The "danger zone". 1 in 100 calls hits this — at 100 RPS, that's one per second. If your timeout is less than p99, calls will time out in normal operation.</td>
+      </tr>
+      <tr>
+        <td class="param-name">p999</td>
+        <td class="param-desc">99.9% of requests are faster</td>
+        <td class="param-desc">Rare but not negligible at high traffic. At 10,000 RPS, roughly 10 requests per second hit this tier. slowdep caps at p99 × 3 as an approximation.</td>
+      </tr>
+    </table>
+
+    <div class="callout" style="margin-top:1.5rem;">
+      <div class="callout-title">Why p99 is the key parameter</div>
+      <p>Setting your timeout to 2× the p50 is not enough. A Postgres query with p50=5ms and p99=200ms will time out 1% of the time if your timeout is 10ms. slowdep surfaces this mismatch during testing rather than in production.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Fault injection</div>
+    <h2 class="section-title">Error injection</h2>
+    <p class="section-body">Real dependencies fail transiently — network hiccups, connection pool exhaustion, brief unavailability during deploys. The <code>errorRate</code> option tells slowdep to reject a fraction of calls with a transient error before the underlying function is called.</p>
+
+    <div class="codeblock"><pre><span class="kw">const</span> <span class="acc">slowCharge</span> = <span class="fn">withLatency</span>(charge, {
+  p50: <span class="num">200</span>,
+  p99: <span class="num">2000</span>,
+  errorRate: <span class="num">0.01</span>  <span class="cm">// 1% of calls reject with a transient error</span>
+})</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">When the error rate fires, the promise rejects with <code>new Error('Simulated transient error')</code>. The underlying function is not invoked. This is intentional — it models the scenario where the dependency is unreachable, not where it returned an application-level error.</p>
+    <p class="section-body">Why this matters: most applications have retry logic for application errors (400s, 404s) but forget to handle transport-level failures. <code>errorRate</code> forces your retry and circuit-breaker code to prove it works.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Configuration</div>
+    <h2 class="section-title">Presets vs custom profiles</h2>
+    <p class="section-body"><strong>Presets</strong> are named latency profiles derived from production observations of common services. Pass a string like <code>'postgres'</code> or <code>'redis'</code> and you get realistic p50/p99 values and an appropriate error rate without any configuration.</p>
+
+    <div class="codeblock"><pre><span class="cm">// Preset — fast to write, good defaults</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(query, <span class="str">'postgres'</span>)</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;"><strong>Custom profiles</strong> are for when you have your own production metrics and want to match them exactly. If your Postgres p99 is 400ms instead of 200ms, use a custom profile.</p>
+
+    <div class="codeblock"><pre><span class="cm">// Custom profile — matches your actual production numbers</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(query, { p50: <span class="num">6</span>, p99: <span class="num">400</span>, errorRate: <span class="num">0.002</span> })</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">The rule of thumb: start with a preset to get something reasonable immediately, then switch to a custom profile when you have real production percentile data to match against. Presets are starting points, not ground truth.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>withLatencyAll — slowdep API</title>
+<meta name="description" content="Wrap every async method on a client object at once. Same latency profile applied to all methods.">
+<link rel="canonical" href="https://slowdeps.site/docs/withLatencyAll/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>withLatencyAll</div>
+    <h1 class="page-title">withLatencyAll(client, profile)</h1>
+    <p class="page-desc">Wrap every async method on a client object at once. Same latency profile applied to all methods.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Signature</div>
+    <h2 class="section-title">TypeScript signature</h2>
+    <div class="codeblock"><pre><span class="kw">function</span> <span class="fn">withLatencyAll</span>&lt;T <span class="kw">extends</span> object&gt;(
+  client: T,
+  profile: <span class="acc">LatencyPreset</span> | <span class="acc">LatencyOptions</span>
+): T</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">The return type is the same as the input type — a new object with the same shape as <code>client</code>, but with every async method wrapped. Non-async methods are passed through unchanged.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Parameters</div>
+    <h2 class="section-title">Function parameters</h2>
+
+    <table class="param-table">
+      <tr><th>param</th><th>type</th><th>default</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">client</td>
+        <td class="param-type">object</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">Any JavaScript object. All methods that return a Promise will be wrapped. The original object is not mutated — a new object with wrapped methods is returned.</td>
+      </tr>
+      <tr>
+        <td class="param-name">profile</td>
+        <td class="param-type">LatencyPreset | LatencyOptions</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">The same latency profile is applied to all wrapped methods. Pass a preset string or a custom <code>LatencyOptions</code> object.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Return value</div>
+    <h2 class="section-title">What withLatencyAll returns</h2>
+    <p class="section-body"><code>withLatencyAll</code> returns a new object (not a Proxy) with the same prototype chain as the original client. Each method is inspected at wrap time: if calling it with no arguments returns a Promise (or if it is detected as an async function), it is wrapped with <code>withLatency</code>. Synchronous methods are passed through unchanged.</p>
+    <p class="section-body"><code>this</code> binding is preserved — each wrapped method is bound to the original client object, so class methods that reference <code>this.someProperty</code> or <code>this.db</code> continue to work correctly.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Method detection</div>
+    <h2 class="section-title">Which methods get wrapped</h2>
+    <p class="section-body">At wrap time, <code>withLatencyAll</code> enumerates the own and inherited enumerable methods on the object. A method is wrapped if it is a function and either:</p>
+
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li>It is declared with the <code>async</code> keyword (detected via <code>fn.constructor.name === 'AsyncFunction'</code>).</li>
+        <li>It explicitly returns a <code>Promise</code> instance.</li>
+      </ul>
+    </div>
+
+    <p class="section-body" style="margin-top:0.75rem;">Synchronous methods — getters, event emitters, configuration accessors — are included on the returned object unchanged. If a method is conditionally async, it will only be wrapped if it is flagged as an async function at the time <code>withLatencyAll</code> is called.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Examples</div>
+    <h2 class="section-title">Code examples</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'wla-redis')">Redis client</button>
+      <button class="tab" onclick="switchTab(this,'wla-pg')">Postgres pool</button>
+      <button class="tab" onclick="switchTab(this,'wla-class')">Custom class</button>
+    </div>
+
+    <div id="wla-redis" class="code-panel active">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">createClient</span> } <span class="kw">from</span> <span class="str">'redis'</span>
+<span class="kw">import</span> { <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">const</span> redis = <span class="fn">createClient</span>()
+<span class="kw">await</span> redis.<span class="fn">connect</span>()
+
+<span class="cm">// Wrap every async method — get, set, del, hGet, etc.</span>
+<span class="kw">const</span> <span class="acc">slowRedis</span> = <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>)
+
+<span class="cm">// Use exactly like the original client</span>
+<span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">set</span>(<span class="str">'key'</span>, <span class="str">'value'</span>)
+<span class="kw">const</span> val = <span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">get</span>(<span class="str">'key'</span>)</pre></div>
+    </div>
+
+    <div id="wla-pg" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">Pool</span> } <span class="kw">from</span> <span class="str">'pg'</span>
+<span class="kw">import</span> { <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> })
+
+<span class="cm">// Wrap the pool — query, connect, end all get latency</span>
+<span class="kw">const</span> <span class="acc">slowPool</span> = <span class="fn">withLatencyAll</span>(pool, <span class="str">'postgres'</span>)
+
+<span class="kw">const</span> { rows } = <span class="kw">await</span> <span class="acc">slowPool</span>.<span class="fn">query</span>(
+  <span class="str">'SELECT * FROM users WHERE active = $1'</span>,
+  [<span class="kw">true</span>]
+)</pre></div>
+    </div>
+
+    <div id="wla-class" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">class</span> <span class="fn">PaymentService</span> {
+  <span class="kw">async</span> <span class="fn">createCharge</span>(amount: <span class="kw">number</span>) { <span class="cm">/* ... */</span> }
+  <span class="kw">async</span> <span class="fn">refund</span>(chargeId: <span class="kw">string</span>) { <span class="cm">/* ... */</span> }
+  <span class="fn">formatAmount</span>(cents: <span class="kw">number</span>) { <span class="kw">return</span> cents / <span class="num">100</span> } <span class="cm">// sync — not wrapped</span>
+}
+
+<span class="kw">const</span> payments = <span class="kw">new</span> <span class="fn">PaymentService</span>()
+
+<span class="cm">// createCharge and refund get Stripe latency; formatAmount is unchanged</span>
+<span class="kw">const</span> <span class="acc">slowPayments</span> = <span class="fn">withLatencyAll</span>(payments, <span class="str">'stripe'</span>)
+
+<span class="kw">const</span> charge = <span class="kw">await</span> <span class="acc">slowPayments</span>.<span class="fn">createCharge</span>(<span class="num">1000</span>)
+<span class="kw">const</span> label = <span class="acc">slowPayments</span>.<span class="fn">formatAmount</span>(<span class="num">1000</span>) <span class="cm">// still synchronous</span></pre></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Caveats</div>
+    <h2 class="section-title">Things to be aware of</h2>
+
+    <div class="callout">
+      <div class="callout-title">Synchronous methods pass through unchanged</div>
+      <p>Only methods that return a Promise are wrapped. Synchronous methods — property accessors, formatters, event emitters — appear on the returned object as-is. Calling them will not add latency.</p>
+    </div>
+
+    <div class="callout tip" style="margin-top:1rem;">
+      <div class="callout-title">this binding is preserved</div>
+      <p>Each wrapped method is bound to the original client instance. You do not need to call <code>.bind()</code> manually. This means class methods that access <code>this.db</code>, <code>this.config</code>, or other instance properties will work correctly through the wrapped object.</p>
+    </div>
+
+    <div class="callout warn" style="margin-top:1rem;">
+      <div class="callout-title">Same profile for all methods</div>
+      <p><code>withLatencyAll</code> applies one profile to every async method on the client. If you need different latency for different methods (e.g., reads vs writes), use <code>withLatency</code> to wrap each method individually with its own profile.</p>
+    </div>
+
+    <div class="callout warn" style="margin-top:1rem;">
+      <div class="callout-title">Don't wrap in production</div>
+      <p>Like <code>withLatency</code>, <code>withLatencyAll</code> should only be used in development and test environments. Use an environment check: <code>process.env.NODE_ENV !== 'production' ? withLatencyAll(client, preset) : client</code>.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+
+<script>
+function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+</script>
+</body>
+</html>

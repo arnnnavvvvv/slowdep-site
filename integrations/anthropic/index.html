@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + Anthropic — integration</title>
+<meta name="description" content="Simulate realistic Anthropic Claude API latency (p50: 600ms, p99: 7s) without burning tokens. Test timeout and retry logic for Claude-powered features.">
+<link rel="canonical" href="https://slowdeps.site/integrations/anthropic/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>Anthropic</div>
+    <h1 class="page-title">slowdep + Anthropic</h1>
+    <p class="page-desc">Simulate realistic Anthropic Claude API latency (p50: 600ms, p99: 7s) without burning tokens. Test timeout and retry logic for Claude-powered features.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">anthropic latency profile</h2>
+    <p class="section-body">The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'anthropic'</code> preset reflects real-world Claude latency for typical prompt lengths. Claude's time-to-first-token is fast, but total latency grows with output length. The 0.5% error rate captures API errors and rate limits.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">anthropic</span>
+        <span class="preset-val">600ms</span>
+        <span class="preset-val">3.5s</span>
+        <span class="preset-val">7s</span>
+        <span class="preset-err">0.5%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Streaming vs non-streaming latency</div>
+      <p>slowdep delays the <em>start</em> of the API call — the initial request latency. For streaming responses (<code>client.messages.stream()</code>), slowdep delays when the stream begins, not the individual token delivery. This accurately models network latency and time-to-first-token, which is the most impactful latency for user experience.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap messages.create</h2>
+    <p class="section-body">Wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">client.messages.create</code> — the primary method for non-streaming Claude requests. Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">.bind(client.messages)</code> to preserve the internal context.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
+
+<span class="cm">// Wrap messages.create — bind to preserve internal context</span>
+<span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
+  client.messages.create.<span class="fn">bind</span>(client.messages),
+  <span class="str">'anthropic'</span>
+);
+
+<span class="cm">// Use exactly like client.messages.create</span>
+<span class="kw">const</span> message = <span class="kw">await</span> <span class="acc">slowCreate</span>({
+  model: <span class="str">'claude-opus-4-5'</span>,
+  max_tokens: <span class="num">1024</span>,
+  messages: [
+    { role: <span class="str">'user'</span>, content: <span class="str">'Explain the tradeoffs of eventual consistency in distributed systems.'</span> }
+  ]
+});
+
+console.<span class="fn">log</span>(message.content[<span class="num">0</span>].text);
+</pre>
+    </div>
+  </div>
+
+  <!-- FAKE RESPONSE PATTERN -->
+  <div class="section">
+    <div class="section-eyebrow">Wrapping a client</div>
+    <h2 class="section-title">The fake response pattern for tests</h2>
+    <p class="section-body">Combine a Jest mock returning a fake <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">Message</code> with slowdep for realistic latency. You get deterministic, token-free test responses that still reflect production timing.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { Message } <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk/resources'</span>;
+
+<span class="cm">// Build a fake Message matching the Anthropic SDK shape</span>
+<span class="kw">function</span> <span class="fn">fakeMessage</span>(text: string): Message {
+  <span class="kw">return</span> {
+    id: <span class="str">'msg_test_01'</span>,
+    type: <span class="str">'message'</span>,
+    role: <span class="str">'assistant'</span>,
+    model: <span class="str">'claude-opus-4-5'</span>,
+    stop_reason: <span class="str">'end_turn'</span>,
+    stop_sequence: <span class="kw">null</span>,
+    content: [{ type: <span class="str">'text'</span>, text }],
+    usage: { input_tokens: <span class="num">30</span>, output_tokens: <span class="num">120</span> }
+  };
+}
+
+<span class="cm">// Fake create: returns controlled response with realistic Claude latency</span>
+<span class="kw">export const</span> <span class="acc">mockCreate</span> = <span class="fn">withLatency</span>(
+  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(
+    <span class="fn">fakeMessage</span>(<span class="str">'Eventual consistency trades strong guarantees for availability and partition tolerance...'</span>)
+  ),
+  <span class="str">'anthropic'</span>
+);
+</pre>
+    </div>
+  </div>
+
+  <!-- TESTING -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Test timeout, retry, and streaming UX</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'ant-timeout')">Timeout</button>
+      <button class="tab" onclick="switchTab(this,'ant-retry')">Retry on error</button>
+      <button class="tab" onclick="switchTab(this,'ant-stream')">Streaming UX</button>
+    </div>
+    <div id="ant-timeout" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { generateReport } <span class="kw">from</span> <span class="str">'../src/ai/report'</span>;
+
+<span class="fn">test</span>(<span class="str">'generateReport times out after 8s and returns fallback'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Simulate a very slow Claude response — complex prompt with long output</span>
+  <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeMessage</span>(<span class="str">'detailed report...'</span>)),
+    { p50: <span class="num">10000</span>, p99: <span class="num">18000</span> }
+  );
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">generateReport</span>(<span class="str">'Q4 data'</span>, {
+    create: slowCreate,
+    timeoutMs: <span class="num">8000</span>,
+    fallback: <span class="str">'Report generation is taking longer than expected. Please try again.'</span>
+  });
+
+  <span class="cm">// Verify fallback was returned instead of throwing</span>
+  <span class="fn">expect</span>(result).<span class="fn">toBe</span>(<span class="str">'Report generation is taking longer than expected. Please try again.'</span>);
+}, <span class="num">12000</span>);
+</pre></div></div>
+
+    <div id="ant-retry" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'retries on overload error (529) and succeeds'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> overloadError = <span class="fn">Object</span>.<span class="fn">assign</span>(
+    <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Overloaded'</span>),
+    { status: <span class="num">529</span>, error: { type: <span class="str">'overloaded_error'</span> } }
+  );
+
+  <span class="kw">const</span> mockCreate = jest.<span class="fn">fn</span>()
+    .<span class="fn">mockRejectedValueOnce</span>(overloadError)
+    .<span class="fn">mockResolvedValueOnce</span>(<span class="fn">fakeMessage</span>(<span class="str">'success after retry'</span>));
+
+  <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(mockCreate, <span class="str">'anthropic'</span>);
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">callWithRetry</span>(slowCreate, {
+    model: <span class="str">'claude-opus-4-5'</span>,
+    max_tokens: <span class="num">256</span>,
+    messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'Hello'</span> }]
+  }, { retryOn: [<span class="num">529</span>], maxRetries: <span class="num">2</span> });
+
+  <span class="fn">expect</span>(result.content[<span class="num">0</span>].text).<span class="fn">toBe</span>(<span class="str">'success after retry'</span>);
+  <span class="fn">expect</span>(mockCreate).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">2</span>);
+}, <span class="num">20000</span>);
+</pre></div></div>
+
+    <div id="ant-stream" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// slowdep delays the START of the stream (time-to-first-token)</span>
+<span class="cm">// This tests whether your UI shows a "thinking..." state before tokens arrive</span>
+<span class="fn">test</span>(<span class="str">'streaming UI shows thinking state before first token'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
+
+  <span class="cm">// Wrap the stream factory — latency applied before stream begins</span>
+  <span class="kw">const</span> <span class="acc">slowStream</span> = <span class="fn">withLatency</span>(
+    client.messages.stream.<span class="fn">bind</span>(client.messages),
+    <span class="str">'anthropic'</span>
+  );
+
+  <span class="kw">let</span> thinkingStateShown = <span class="kw">false</span>;
+  <span class="kw">const</span> streamPromise = <span class="acc">slowStream</span>({
+    model: <span class="str">'claude-opus-4-5'</span>,
+    max_tokens: <span class="num">64</span>,
+    messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'Say hello briefly.'</span> }]
+  });
+
+  <span class="cm">// Immediately after kicking off stream, UI should be in "thinking" state</span>
+  thinkingStateShown = <span class="kw">true</span>;
+  <span class="fn">expect</span>(thinkingStateShown).<span class="fn">toBe</span>(<span class="kw">true</span>);
+
+  <span class="kw">const</span> stream = <span class="kw">await</span> streamPromise;
+  <span class="kw">const</span> text = <span class="kw">await</span> stream.<span class="fn">finalText</span>();
+  <span class="fn">expect</span>(text.length).<span class="fn">toBeGreaterThan</span>(<span class="num">0</span>);
+}, <span class="num">15000</span>);
+</pre></div></div>
+  </div>
+
+  <!-- INDIVIDUAL WRAPPING -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Model-specific latency profiles</h2>
+    <p class="section-body">Different Claude models have different latency characteristics. claude-haiku-4-5 is significantly faster than claude-opus-4-5. Use custom profiles per model.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
+<span class="kw">const</span> create = client.messages.create.<span class="fn">bind</span>(client.messages);
+
+<span class="cm">// claude-haiku-4-5: very fast, great for high-throughput tasks</span>
+<span class="kw">const</span> <span class="acc">slowHaiku</span> = <span class="fn">withLatency</span>(create, { p50: <span class="num">200</span>, p99: <span class="num">1500</span>, errorRate: <span class="num">0.003</span> });
+
+<span class="cm">// claude-sonnet-4-5: balanced speed and capability</span>
+<span class="kw">const</span> <span class="acc">slowSonnet</span> = <span class="fn">withLatency</span>(create, { p50: <span class="num">400</span>, p99: <span class="num">4000</span>, errorRate: <span class="num">0.005</span> });
+
+<span class="cm">// claude-opus-4-5: most capable, use 'anthropic' preset (p50: 600ms, p99: 7s)</span>
+<span class="kw">const</span> <span class="acc">slowOpus</span> = <span class="fn">withLatency</span>(create, <span class="str">'anthropic'</span>);
+
+<span class="cm">// Route to the right model based on task complexity</span>
+<span class="kw">const</span> classify = <span class="kw">await</span> <span class="acc">slowHaiku</span>({ model: <span class="str">'claude-haiku-4-5'</span>, max_tokens: <span class="num">16</span>, messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'Is this spam? Reply yes/no: "Buy now!"'</span> }] });
+<span class="kw">const</span> analysis = <span class="kw">await</span> <span class="acc">slowOpus</span>({ model: <span class="str">'claude-opus-4-5'</span>, max_tokens: <span class="num">2048</span>, messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'Analyze this codebase architecture...'</span> }] });
+</pre>
+    </div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Never wrap real API calls</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="cm">// src/ai/claude.ts — export the right client for each environment</span>
+<span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
+
+<span class="cm">// In tests: inject your mock + slowdep via dependency injection</span>
+<span class="cm">// In production/dev: use the real client as-is</span>
+<span class="kw">export type</span> <span class="fn">CreateFn</span> = <span class="kw">typeof</span> client.messages.create;
+
+<span class="kw">export function</span> <span class="fn">getCreateFn</span>(mockFn?: jest.Mock): <span class="fn">CreateFn</span> {
+  <span class="kw">if</span> (mockFn) {
+    <span class="cm">// Test: use the provided mock with slowdep latency</span>
+    <span class="kw">return</span> <span class="fn">withLatency</span>(mockFn, <span class="str">'anthropic'</span>) <span class="kw">as unknown as</span> <span class="fn">CreateFn</span>;
+  }
+  <span class="cm">// Production/dev: real API, no artificial latency</span>
+  <span class="kw">return</span> client.messages.create.<span class="fn">bind</span>(client.messages);
+}
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Only use slowdep on mocks</div>
+      <p>Like all LLM integrations, only wrap a <strong>mock function</strong> with slowdep — never a real API client method. Wrapping a real API call adds fake latency on top of real latency, making your tests meaningless and your development experience painful.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Time-to-first-token UX</strong> — Claude's TTFT varies; does your UI show a "thinking" indicator within 100ms of the request starting?</li>
+        <li><strong>Streaming vs buffered choice</strong> — at p50 of 600ms, buffered responses feel instant; at p99 of 7s, streaming becomes essential for UX</li>
+        <li><strong>Overload handling (529)</strong> — Claude can return 529 Overloaded; your retry logic must handle it with appropriate backoff</li>
+        <li><strong>Multi-turn context budget</strong> — longer conversations have higher latency; verify your UX still feels responsive after 10 turns</li>
+        <li><strong>Parallel call efficiency</strong> — running two independent Claude calls in parallel cuts total latency roughly in half at p50</li>
+        <li><strong>Tool use round-trips</strong> — agentic workflows make multiple sequential API calls; each call adds p50 latency — 5 tool uses = ~3s minimum</li>
+        <li><strong>Fallback to cached response</strong> — when Claude is slow or unavailable, does your service return a stale cached response or error gracefully?</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed Claude integration</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { Message, MessageCreateParamsNonStreaming } <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk/resources'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">Anthropic</span>({ apiKey: process.env.<span class="acc">ANTHROPIC_API_KEY</span> });
+
+<span class="cm">// Explicit typing for the wrapped function</span>
+<span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
+  (params: MessageCreateParamsNonStreaming): Promise&lt;Message&gt; =>
+    client.messages.<span class="fn">create</span>(params) <span class="kw">as</span> Promise&lt;Message&gt;,
+  <span class="str">'anthropic'</span>
+);
+
+<span class="cm">// Full type safety — result is Message, content is TextBlock[]</span>
+<span class="kw">const</span> response: Message = <span class="kw">await</span> <span class="acc">slowCreate</span>({
+  model: <span class="str">'claude-opus-4-5'</span>,
+  max_tokens: <span class="num">512</span>,
+  messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'What is recursion?'</span> }]
+});
+
+<span class="kw">const</span> text = response.content
+  .<span class="fn">filter</span>(block => block.type === <span class="str">'text'</span>)
+  .<span class="fn">map</span>(block => block.text)
+  .<span class="fn">join</span>(<span class="str">''</span>);
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

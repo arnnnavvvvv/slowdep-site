@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why not setTimeout? — slowdep guides</title>
+<meta name="description" content="setTimeout gives every call the same delay. Real dependencies don't. Here's why that matters.">
+<link rel="canonical" href="https://slowdeps.site/guides/why-not-settimeout/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/why-not-settimeout/" class="nav-link active">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Guides<span>/</span>Why not setTimeout</div>
+    <h1 class="page-title">Why setTimeout is lying to you</h1>
+    <p class="page-desc">setTimeout gives every call the same delay. Real dependencies don't. Here's why that matters.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">The problem</div>
+    <h2 class="section-title">The false confidence of flat delays</h2>
+    <p class="section-body">
+      When you write <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">await new Promise(r => setTimeout(r, 200))</code> in a test,
+      you feel like you've done something responsible. You've added latency. You've simulated a slow dependency.
+      But you haven't — you've added a <em>fixed</em> delay. Every single call takes exactly 200ms.
+    </p>
+    <p class="section-body">
+      That means your retry logic looks great because it triggers at exactly 200ms. Your timeout is never hit
+      because the mock never drifts. Your loading state flashes for precisely 200ms, every time.
+      The test passes. The code ships. Production breaks — because production doesn't have a timer that fires at 200ms. It has a
+      distribution: most calls are 5ms, and one in a hundred takes 2 seconds.
+    </p>
+    <div class="codeblock"><pre><span class="cm">// what your test does</span>
+<span class="kw">const</span> mockDB = <span class="fn">jest.fn</span>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, <span class="num">200</span>));
+  <span class="kw">return</span> { id: <span class="num">1</span>, name: <span class="str">'Alice'</span> };
+});
+
+<span class="cm">// what production actually does</span>
+<span class="cm">// p50: 5ms, p99: 200ms, occasionally 800ms+</span>
+<span class="cm">// your timeout of 250ms fails 1 in 200 requests</span></pre></div>
+    <div class="callout warn">
+      <div class="callout-title">False confidence</div>
+      <p>A test that always takes exactly 200ms cannot catch bugs that only appear when 1% of calls take 2 seconds. Fixed delays create a false sense of security.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Latency reality</div>
+    <h2 class="section-title">What real latency looks like</h2>
+    <p class="section-body">
+      Real dependency latency is bimodal and right-skewed. Most calls fall on a fast path: the database connection is already warm,
+      the query hits an index, the cache is hot. These calls complete in single-digit milliseconds.
+    </p>
+    <p class="section-body">
+      A small fraction of calls hit a slow path: a GC pause on the database server, a network retransmission,
+      a cold connection being opened, a lock wait, a noisy neighbor on the same host. These calls take 10x, 100x longer.
+      The result is a distribution with a sharp peak on the left and a long tail on the right — a lognormal distribution.
+    </p>
+    <div style="margin-top:1.5rem;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">setTimeout — flat distribution</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:60px;">
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--blue);border-radius:2px 2px 0 0;height:58px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--border-light);border-radius:2px 2px 0 0;height:4px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms ——————————————————————— 200ms ——————————————————————— 400ms</div>
+    </div>
+    <div style="margin-top:1.5rem;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.75rem;">slowdep — lognormal distribution (realistic)</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:60px;">
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:55px;"></div>
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:42px;"></div>
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:28px;"></div>
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:18px;"></div>
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:12px;"></div>
+        <div style="flex:1;background:var(--green);border-radius:2px 2px 0 0;height:8px;"></div>
+        <div style="flex:1;background:var(--yellow);border-radius:2px 2px 0 0;height:5px;"></div>
+        <div style="flex:1;background:var(--orange);border-radius:2px 2px 0 0;height:4px;"></div>
+        <div style="flex:1;background:var(--red);border-radius:2px 2px 0 0;height:3px;"></div>
+        <div style="flex:1;background:var(--red);border-radius:2px 2px 0 0;height:2px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;">0ms ——— fast path (most calls) ————————— p99 (1%) —————— tail (rare)</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Hidden bugs</div>
+    <h2 class="section-title">The bugs setTimeout hides</h2>
+    <p class="section-body">
+      Fixed delays don't just fail to catch bugs — they actively hide them. Here are three categories of bugs
+      that pass silently with setTimeout but surface immediately with realistic latency:
+    </p>
+    <div class="steps" style="margin-top:1.5rem;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Retry logic that only triggers at the configured threshold</div>
+          <div class="step-body">
+            If your retry fires after 250ms and your mock always takes 200ms, retries never trigger.
+            In production, 1% of calls take 800ms — and your retry logic is untested at that latency.
+            With slowdep's lognormal distribution, some test calls will naturally exceed 250ms and exercise the retry path.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Timeouts that are either never triggered or always triggered</div>
+          <div class="step-body">
+            Set your mock delay to 200ms and your timeout to 250ms: timeout never fires.
+            Set mock to 300ms and timeout to 250ms: timeout always fires. Neither tells you
+            whether your timeout is calibrated correctly for realistic tail latency. slowdep samples
+            across the full distribution, so some calls will hit the timeout and most won't —
+            exactly like production.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Loading states that flash for exactly 200ms and never vary</div>
+          <div class="step-body">
+            Your UI shows a spinner while a request is in-flight. With setTimeout, the spinner
+            always shows for exactly the same duration. Real users see it for 5ms (barely visible)
+            or 2 seconds (feels broken). Testing with realistic latency reveals whether your
+            skeleton screens, progress indicators, and timeout fallbacks actually work.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">The solution</div>
+    <h2 class="section-title">What slowdep does differently</h2>
+    <p class="section-body">
+      slowdep samples from a lognormal distribution parameterized by p50 and p99 — the two numbers
+      you can actually measure from your APM tool. Most calls are fast (near p50), a small fraction
+      are slow (near p99), and rare calls exceed that. This matches what production looks like.
+    </p>
+    <p class="section-body">The math: <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">mu = ln(p50)</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">sigma = (ln(p99) - mu) / 2.326</code>, delay sampled from <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">exp(mu + sigma * Z)</code> where Z is a standard normal variate.</p>
+
+    <div class="code-tabs" style="margin-top:1.5rem;">
+      <button class="tab active" onclick="switchTab(this,'t-slow')">slowdep</button>
+      <button class="tab" onclick="switchTab(this,'t-set')">setTimeout</button>
+    </div>
+    <div id="t-slow" class="code-panel active">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// wrap your db client once — done</span>
+<span class="kw">const</span> <span class="acc">db</span> = <span class="fn">withLatency</span>(realDbClient, <span class="str">'postgres'</span>);
+<span class="cm">// p50: 5ms, p99: 200ms — lognormal distribution</span>
+<span class="cm">// some calls: 3ms. some: 180ms. rare: 400ms+</span>
+
+<span class="kw">const</span> user = <span class="kw">await</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id]);</pre></div>
+    </div>
+    <div id="t-set" class="code-panel">
+      <div class="code-block"><pre><span class="cm">// the setTimeout equivalent — manual and wrong</span>
+<span class="kw">const</span> <span class="acc">db</span> = {
+  query: <span class="kw">async</span> (sql, params) =&gt; {
+    <span class="kw">await new</span> <span class="fn">Promise</span>(r =&gt; <span class="fn">setTimeout</span>(r, <span class="num">200</span>)); <span class="cm">// always 200ms</span>
+    <span class="kw">return</span> realDbClient.<span class="fn">query</span>(sql, params);
+  }
+};
+<span class="cm">// every call: exactly 200ms</span>
+<span class="cm">// p99 behavior: never exercised</span>
+<span class="cm">// retry / timeout bugs: hidden</span></pre></div>
+    </div>
+    <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Scope</div>
+    <h2 class="section-title">When setTimeout is fine</h2>
+    <p class="section-body">
+      setTimeout isn't always wrong. If you just need <em>some</em> delay in a smoke test — you're not testing
+      retry logic, you're not testing timeouts, you just need the function to be async — setTimeout works fine.
+    </p>
+    <p class="section-body">
+      Use slowdep when the <em>shape</em> of the latency distribution matters to the correctness of your code.
+      That includes: retry logic, timeout calibration, circuit breaker configuration, backoff jitter,
+      loading state UX, and any code whose behavior depends on whether a call takes 5ms or 500ms.
+    </p>
+    <table class="cmp-table" style="margin-top:1.5rem;">
+      <tr><th>scenario</th><th>setTimeout</th><th>slowdep</th></tr>
+      <tr><td>smoke test — just needs async</td><td><span class="yes">fine</span></td><td><span class="yes">also fine</span></td></tr>
+      <tr><td>testing retry logic</td><td><span class="no">hides bugs</span></td><td><span class="yes">catches bugs</span></td></tr>
+      <tr><td>testing timeout calibration</td><td><span class="no">misleading</span></td><td><span class="yes">accurate</span></td></tr>
+      <tr><td>testing circuit breaker</td><td><span class="no">insufficient</span></td><td><span class="yes">correct</span></td></tr>
+      <tr><td>testing loading UX</td><td><span class="partial">limited</span></td><td><span class="yes">realistic</span></td></tr>
+      <tr><td>CI integration testing</td><td><span class="partial">partial</span></td><td><span class="yes">recommended</span></td></tr>
+    </table>
+    <div class="callout tip" style="margin-top:1.5rem;">
+      <div class="callout-title">Quick migration</div>
+      <p>Replace <code>await new Promise(r => setTimeout(r, 200))</code> with <code>withLatency(fn, { p50: 5, p99: 200 })</code> and wrap your dependency. One line change, immediate improvement.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

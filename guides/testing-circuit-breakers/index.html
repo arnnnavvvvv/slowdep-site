@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testing circuit breakers — slowdep guides</title>
+<meta name="description" content="Simulate the cascading slow failures that trip circuit breakers, and verify your circuit opens and closes correctly.">
+<link rel="canonical" href="https://slowdeps.site/guides/testing-circuit-breakers/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/why-not-settimeout/" class="nav-link active">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Guides<span>/</span>Testing circuit breakers</div>
+    <h1 class="page-title">Testing circuit breakers</h1>
+    <p class="page-desc">Simulate the cascading slow failures that trip circuit breakers, and verify your circuit opens and closes correctly.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">Background</div>
+    <h2 class="section-title">What a circuit breaker is</h2>
+    <p class="section-body">
+      A circuit breaker is a resiliency pattern that protects your application from cascading failures.
+      It sits in front of a dependency and monitors calls. When failures exceed a threshold, it
+      "opens" the circuit — subsequent calls fail immediately without hitting the downstream service.
+      After a cooldown period, it enters "half-open" state, allowing a probe request through.
+      If the probe succeeds, the circuit closes and normal operation resumes.
+    </p>
+    <div style="margin-top:1.5rem;display:flex;align-items:center;gap:0.5rem;font-family:var(--mono);font-size:11px;flex-wrap:wrap;">
+      <span style="background:var(--surface);border:1px solid var(--green);color:var(--green);padding:0.3rem 0.75rem;border-radius:4px;">CLOSED</span>
+      <span style="color:var(--muted)">? N failures ?</span>
+      <span style="background:var(--surface);border:1px solid var(--red);color:var(--red);padding:0.3rem 0.75rem;border-radius:4px;">OPEN</span>
+      <span style="color:var(--muted)">? cooldown ?</span>
+      <span style="background:var(--surface);border:1px solid var(--yellow);color:var(--yellow);padding:0.3rem 0.75rem;border-radius:4px;">HALF-OPEN</span>
+      <span style="color:var(--muted)">? success ?</span>
+      <span style="background:var(--surface);border:1px solid var(--green);color:var(--green);padding:0.3rem 0.75rem;border-radius:4px;">CLOSED</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">The key insight</div>
+    <h2 class="section-title">Why circuit breakers need slow failures</h2>
+    <p class="section-body">
+      A circuit breaker doesn't trip on fast errors alone. It trips when the system is under stress —
+      meaning errors are frequent <em>and</em> responses are slow. A service that fails instantly is
+      actually less dangerous than one that fails after 3 seconds, because fast failures don't
+      exhaust your connection pool or block your threads.
+    </p>
+    <p class="section-body">
+      This is why mocks that throw immediately can't test circuit breaker behavior accurately.
+      A mock that throws in 0ms won't exhaust your connection pool. A mock that throws after
+      3 seconds will. slowdep gives you the latency + error combination that actually
+      triggers circuit breaker thresholds.
+    </p>
+    <div class="callout">
+      <div class="callout-title">The dangerous combination</div>
+      <p>High error rate + high latency = circuit breaker trip condition. slowdep lets you control both. <code>errorRate: 0.3</code> with <code>p99: 3000</code> simulates a degraded service that's slow to fail.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Simulating the trip</div>
+    <h2 class="section-title">Simulating the trip condition</h2>
+    <p class="section-body">
+      Configure slowdep with enough error rate and latency to trip your circuit breaker's thresholds.
+      A 30% error rate with p99 of 3s is typical of a degraded database or downstream service.
+    </p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// simulates a degraded service: slow AND error-prone</span>
+<span class="kw">const</span> degradedService = <span class="fn">withLatency</span>(realService.call, {
+  p50: <span class="num">500</span>,      <span class="cm">// 500ms median — already slow</span>
+  p99: <span class="num">3000</span>,     <span class="cm">// 3s p99 — tail exhausts connection pools</span>
+  errorRate: <span class="num">0.3</span>, <span class="cm">// 30% fail — above typical circuit breaker threshold</span>
+});
+
+<span class="cm">// fire requests until the circuit trips</span>
+<span class="kw">async function</span> <span class="fn">tripCircuit</span>(cb: CircuitBreaker, service: <span class="fn">Function</span>) {
+  <span class="kw">const</span> calls = Array.<span class="fn">from</span>({ length: <span class="num">20</span> }, () =&gt;
+    cb.<span class="fn">execute</span>(() =&gt; <span class="fn">service</span>()).<span class="fn">catch</span>(() =&gt; {}) <span class="cm">// suppress individual errors</span>
+  );
+  <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">all</span>(calls);
+}</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Open state</div>
+    <h2 class="section-title">Testing the open state</h2>
+    <p class="section-body">
+      After the circuit opens, subsequent calls must fail immediately — not after a timeout.
+      This is the core value of the pattern: once the circuit is open, no time is wasted
+      waiting for a downstream that's known to be unhealthy.
+    </p>
+    <div class="codeblock"><pre><span class="fn">it</span>(<span class="str">'fails fast when circuit is open'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">SimpleCircuitBreaker</span>({ threshold: <span class="num">5</span>, timeout: <span class="num">10000</span> });
+  <span class="kw">const</span> degraded = <span class="fn">withLatency</span>(
+    <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'downstream error'</span>); },
+    { p50: <span class="num">500</span>, p99: <span class="num">3000</span>, errorRate: <span class="num">1.0</span> }
+  );
+
+  <span class="cm">// trip the circuit with 5 failures</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">5</span>; i++) {
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">degraded</span>()).<span class="fn">catch</span>(() =&gt; {});
+  }
+
+  <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'open'</span>);
+
+  <span class="cm">// open circuit must fail immediately</span>
+  <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+  <span class="kw">await</span> <span class="fn">expect</span>(cb.<span class="fn">execute</span>(() =&gt; <span class="fn">degraded</span>()))
+    .<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'circuit open'</span>);
+  <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
+
+  <span class="fn">expect</span>(elapsed).<span class="fn">toBeLessThan</span>(<span class="num">10</span>); <span class="cm">// must be near-instant, not 500ms+</span>
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Recovery</div>
+    <h2 class="section-title">Testing the half-open recovery</h2>
+    <p class="section-body">
+      After the cooldown period, the circuit enters half-open state. Set the service back
+      to healthy (errorRate: 0) and verify the circuit closes after a successful probe.
+    </p>
+    <div class="codeblock"><pre><span class="fn">it</span>(<span class="str">'closes circuit after successful probe'</span>, <span class="kw">async</span> () =&gt; {
+  jest.<span class="fn">useFakeTimers</span>();
+  <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">SimpleCircuitBreaker</span>({ threshold: <span class="num">3</span>, cooldown: <span class="num">5000</span> });
+
+  <span class="cm">// wrap a function we can control</span>
+  <span class="kw">let</span> shouldFail = <span class="kw">true</span>;
+  <span class="kw">const</span> service = <span class="fn">withLatency</span>(
+    <span class="kw">async</span> () =&gt; {
+      <span class="kw">if</span> (shouldFail) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'down'</span>);
+      <span class="kw">return</span> <span class="str">'ok'</span>;
+    },
+    { p50: <span class="num">200</span>, p99: <span class="num">2000</span>, errorRate: <span class="num">0</span> } <span class="cm">// errorRate=0; failure controlled above</span>
+  );
+
+  <span class="cm">// trip the circuit</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; i++) {
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">service</span>()).<span class="fn">catch</span>(() =&gt; {});
+  }
+  <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'open'</span>);
+
+  <span class="cm">// advance past cooldown ? half-open</span>
+  jest.<span class="fn">advanceTimersByTime</span>(<span class="num">5001</span>);
+  <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'half-open'</span>);
+
+  <span class="cm">// "service recovers"</span>
+  shouldFail = <span class="kw">false</span>;
+
+  <span class="cm">// probe succeeds ? circuit closes</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">service</span>());
+  <span class="fn">expect</span>(result).<span class="fn">toBe</span>(<span class="str">'ok'</span>);
+  <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'closed'</span>);
+
+  jest.<span class="fn">useRealTimers</span>();
+});</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Full example</div>
+    <h2 class="section-title">A minimal circuit breaker with full tests</h2>
+    <p class="section-body">
+      Here's a minimal circuit breaker implementation and tests for all three states —
+      closed, open, and half-open — using slowdep to control failure conditions.
+    </p>
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'t-cb')">circuit breaker</button>
+      <button class="tab" onclick="switchTab(this,'t-cbt')">tests</button>
+    </div>
+    <div id="t-cb" class="code-panel active">
+      <div class="code-block"><pre><span class="cm">// SimpleCircuitBreaker.ts</span>
+<span class="kw">type</span> <span class="acc">State</span> = <span class="str">'closed'</span> | <span class="str">'open'</span> | <span class="str">'half-open'</span>;
+
+<span class="kw">export class</span> <span class="fn">SimpleCircuitBreaker</span> {
+  state: <span class="acc">State</span> = <span class="str">'closed'</span>;
+  <span class="kw">private</span> failures = <span class="num">0</span>;
+  <span class="kw">private</span> openedAt = <span class="num">0</span>;
+  <span class="kw">constructor</span>(<span class="kw">private</span> opts: { threshold: <span class="acc">number</span>; cooldown: <span class="acc">number</span> }) {}
+
+  <span class="kw">async</span> <span class="fn">execute</span>&lt;T&gt;(fn: () =&gt; <span class="fn">Promise</span>&lt;T&gt;): <span class="fn">Promise</span>&lt;T&gt; {
+    <span class="kw">if</span> (<span class="kw">this</span>.state === <span class="str">'open'</span>) {
+      <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - <span class="kw">this</span>.openedAt;
+      <span class="kw">if</span> (elapsed &lt; <span class="kw">this</span>.opts.cooldown) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'circuit open'</span>);
+      <span class="kw">this</span>.state = <span class="str">'half-open'</span>;
+    }
+    <span class="kw">try</span> {
+      <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">fn</span>();
+      <span class="kw">this</span>.failures = <span class="num">0</span>;
+      <span class="kw">this</span>.state = <span class="str">'closed'</span>;
+      <span class="kw">return</span> result;
+    } <span class="kw">catch</span> (err) {
+      <span class="kw">this</span>.failures++;
+      <span class="kw">if</span> (<span class="kw">this</span>.failures &gt;= <span class="kw">this</span>.opts.threshold) {
+        <span class="kw">this</span>.state = <span class="str">'open'</span>;
+        <span class="kw">this</span>.openedAt = Date.<span class="fn">now</span>();
+      }
+      <span class="kw">throw</span> err;
+    }
+  }
+}</pre></div>
+    </div>
+    <div id="t-cbt" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { <span class="acc">SimpleCircuitBreaker</span> } <span class="kw">from</span> <span class="str">'./SimpleCircuitBreaker'</span>;
+
+<span class="fn">describe</span>(<span class="str">'SimpleCircuitBreaker'</span>, () =&gt; {
+  <span class="fn">it</span>(<span class="str">'stays closed on success'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">SimpleCircuitBreaker</span>({ threshold: <span class="num">3</span>, cooldown: <span class="num">1000</span> });
+    <span class="kw">const</span> healthy = <span class="fn">withLatency</span>(<span class="kw">async</span> () =&gt; <span class="str">'ok'</span>, { p50: <span class="num">5</span>, p99: <span class="num">50</span> });
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">healthy</span>());
+    <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'closed'</span>);
+  });
+
+  <span class="fn">it</span>(<span class="str">'opens after threshold failures with realistic latency'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">SimpleCircuitBreaker</span>({ threshold: <span class="num">3</span>, cooldown: <span class="num">1000</span> });
+    <span class="kw">const</span> degraded = <span class="fn">withLatency</span>(
+      <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'down'</span>); },
+      { p50: <span class="num">500</span>, p99: <span class="num">3000</span>, errorRate: <span class="num">1.0</span> }
+    );
+    <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; i++) {
+      <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">degraded</span>()).<span class="fn">catch</span>(() =&gt; {});
+    }
+    <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'open'</span>);
+  });
+
+  <span class="fn">it</span>(<span class="str">'transitions to half-open after cooldown'</span>, <span class="kw">async</span> () =&gt; {
+    jest.<span class="fn">useFakeTimers</span>();
+    <span class="kw">const</span> cb = <span class="kw">new</span> <span class="fn">SimpleCircuitBreaker</span>({ threshold: <span class="num">1</span>, cooldown: <span class="num">5000</span> });
+    <span class="kw">const</span> failing = <span class="fn">withLatency</span>(
+      <span class="kw">async</span> () =&gt; { <span class="kw">throw new</span> <span class="fn">Error</span>(); },
+      { p50: <span class="num">100</span>, p99: <span class="num">500</span>, errorRate: <span class="num">1.0</span> }
+    );
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">failing</span>()).<span class="fn">catch</span>(() =&gt; {});
+    <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'open'</span>);
+    jest.<span class="fn">advanceTimersByTime</span>(<span class="num">5001</span>);
+    <span class="kw">const</span> healthy = <span class="fn">withLatency</span>(<span class="kw">async</span> () =&gt; <span class="str">'ok'</span>, <span class="str">'redis'</span>);
+    <span class="kw">await</span> cb.<span class="fn">execute</span>(() =&gt; <span class="fn">healthy</span>());
+    <span class="fn">expect</span>(cb.state).<span class="fn">toBe</span>(<span class="str">'closed'</span>);
+    jest.<span class="fn">useRealTimers</span>();
+  });
+});</pre></div>
+    </div>
+    <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

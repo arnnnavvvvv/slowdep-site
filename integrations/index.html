@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integrations — slowdep</title>
+<meta name="description" content="slowdep integration guides for PostgreSQL, Redis, MongoDB, Prisma, OpenAI, Anthropic, Stripe, AWS S3, Next.js, and fetch.">
+<link rel="canonical" href="https://slowdeps.site/integrations/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations</div>
+    <h1 class="page-title">Integrations</h1>
+    <p class="page-desc">Step-by-step guides for adding realistic latency to your specific stack. Each guide shows idiomatic wrapping patterns, production safety, and what to test.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">databases</div>
+    <h2 class="section-title">Database clients</h2>
+    <div class="card-grid">
+      <a href="/integrations/postgres/" class="card">
+        <div class="card-label">p50: 5ms · p99: 200ms</div>
+        <div class="card-title">PostgreSQL</div>
+        <div class="card-body">Wrap pg Pool queries with the postgres preset. Includes Jest examples for timeout and connection pool testing.</div>
+      </a>
+      <a href="/integrations/redis/" class="card">
+        <div class="card-label">p50: 1ms · p99: 20ms</div>
+        <div class="card-title">Redis</div>
+        <div class="card-body">Wrap ioredis with withLatencyAll. Test cache-miss latency and slow-cache timeout behaviour.</div>
+      </a>
+      <a href="/integrations/mongodb/" class="card">
+        <div class="card-label">p50: 8ms · p99: 250ms</div>
+        <div class="card-title">MongoDB</div>
+        <div class="card-body">Wrap native MongoDB driver collections. Covers findOne, insertOne, and Mongoose patterns.</div>
+      </a>
+      <a href="/integrations/prisma/" class="card">
+        <div class="card-label">p50: 5ms · p99: 200ms</div>
+        <div class="card-title">Prisma</div>
+        <div class="card-body">Wrap individual Prisma operations and helper patterns. Explains why withLatencyAll needs special handling with Prisma.</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">ai apis</div>
+    <h2 class="section-title">AI model APIs</h2>
+    <div class="card-grid">
+      <a href="/integrations/openai/" class="card">
+        <div class="card-label">p50: 800ms · p99: 8s</div>
+        <div class="card-title">OpenAI</div>
+        <div class="card-body">Wrap openai.chat.completions.create. Test timeout and retry logic without burning tokens.</div>
+      </a>
+      <a href="/integrations/anthropic/" class="card">
+        <div class="card-label">p50: 600ms · p99: 7s</div>
+        <div class="card-title">Anthropic</div>
+        <div class="card-body">Wrap @anthropic-ai/sdk messages.create. Test Claude latency and streaming UX handling.</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">external apis</div>
+    <h2 class="section-title">External services</h2>
+    <div class="card-grid">
+      <a href="/integrations/stripe/" class="card">
+        <div class="card-label">p50: 200ms · p99: 2s</div>
+        <div class="card-title">Stripe</div>
+        <div class="card-body">Wrap stripe.paymentIntents and other resource methods. Test checkout UX and payment timeout handling.</div>
+      </a>
+      <a href="/integrations/aws-s3/" class="card">
+        <div class="card-label">p50: 30ms · p99: 500ms</div>
+        <div class="card-title">AWS S3</div>
+        <div class="card-body">Wrap @aws-sdk/client-s3 send commands. Test upload timeout and multipart retry behaviour.</div>
+      </a>
+      <a href="/integrations/fetch/" class="card">
+        <div class="card-label">p50: 80ms · p99: 1s</div>
+        <div class="card-title">fetch / axios</div>
+        <div class="card-body">Wrap native fetch, axios, or any HTTP client. Generic integration for any REST API.</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">frameworks</div>
+    <h2 class="section-title">Frameworks</h2>
+    <div class="card-grid">
+      <a href="/integrations/nextjs/" class="card">
+        <div class="card-label">App Router · Pages Router</div>
+        <div class="card-title">Next.js</div>
+        <div class="card-body">Use slowdep in Server Components, API routes, and getServerSideProps. Test Suspense boundaries and loading states.</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">don't see your stack?</div>
+    <h2 class="section-title">Any async function works</h2>
+    <p class="section-body">slowdep wraps any function that returns a Promise. If your library or client isn't listed, wrap its methods directly:</p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span>, <span class="fn">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// Wrap a single method</span>
+<span class="kw">const</span> <span class="acc">slowSend</span> = <span class="fn">withLatency</span>(client.send.<span class="fn">bind</span>(client), {
+  p50: <span class="num">50</span>, p99: <span class="num">400</span>, errorRate: <span class="num">0.005</span>,
+});
+
+<span class="cm">// Wrap all async methods on a client object</span>
+<span class="kw">const</span> <span class="acc">slowClient</span> = <span class="fn">withLatencyAll</span>(client, { p50: <span class="num">50</span>, p99: <span class="num">400</span> });</pre></div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

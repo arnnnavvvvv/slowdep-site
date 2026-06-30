@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + PostgreSQL — integration</title>
+<meta name="description" content="Add realistic PostgreSQL latency (p50: 5ms, p99: 200ms) to your queries in tests and local development.">
+<link rel="canonical" href="https://slowdeps.site/integrations/postgres/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>PostgreSQL</div>
+    <h1 class="page-title">slowdep + PostgreSQL</h1>
+    <p class="page-desc">Add realistic PostgreSQL latency (p50: 5ms, p99: 200ms) to your queries in tests and local development. Catch timeout bugs before production does.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">postgres latency profile</h2>
+    <p class="section-body">The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'postgres'</code> preset models a well-tuned Postgres instance on the same network. Latency follows a lognormal distribution — most queries are fast, but a tail of slow queries appears at realistic frequency.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">postgres</span>
+        <span class="preset-val">5ms</span>
+        <span class="preset-val">80ms</span>
+        <span class="preset-val">200ms</span>
+        <span class="preset-err">0.1%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Why lognormal?</div>
+      <p>Real Postgres latency is not uniformly distributed. Most queries hit the buffer cache and return in 1–3ms. Complex queries, lock waits, and autovacuum interference push the tail to 200ms+. The lognormal distribution matches this shape accurately.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap pool.query in two lines</h2>
+    <p class="section-body">The most direct approach: wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">pool.query</code> so every query in your service goes through realistic latency. Use this in your test setup file.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> });
+
+<span class="cm">// Wrap pool.query with realistic Postgres latency</span>
+pool.query = <span class="fn">withLatency</span>(pool.query.<span class="fn">bind</span>(pool), <span class="str">'postgres'</span>);
+
+<span class="cm">// Now every call to pool.query() will experience realistic latency</span>
+<span class="kw">const</span> result = <span class="kw">await</span> pool.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [userId]);
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Bind matters</div>
+      <p>Always use <code>pool.query.bind(pool)</code>, not just <code>pool.query</code>. Without binding, <code>this</code> inside the pg Pool method will be undefined and you'll get a runtime error.</p>
+    </div>
+  </div>
+
+  <!-- WRAPPING A CLIENT -->
+  <div class="section">
+    <div class="section-eyebrow">Wrapping a client</div>
+    <h2 class="section-title">Wrap the entire pool with withLatencyAll</h2>
+    <p class="section-body">Use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> to wrap every async method on the pool at once — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">query</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">connect</code>, and others. This is the most thorough approach.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> });
+
+<span class="cm">// Wrap every async method on pool in one call</span>
+<span class="kw">const</span> <span class="acc">slowPool</span> = <span class="fn">withLatencyAll</span>(pool, <span class="str">'postgres'</span>);
+
+<span class="cm">// pool.query, pool.connect, etc. all now have realistic latency</span>
+<span class="kw">const</span> { rows } = <span class="kw">await</span> <span class="acc">slowPool</span>.<span class="fn">query</span>(<span class="str">'SELECT id, email FROM users LIMIT 50'</span>);
+
+<span class="cm">// Acquiring a connection also has realistic pool-checkout latency</span>
+<span class="kw">const</span> client = <span class="kw">await</span> <span class="acc">slowPool</span>.<span class="fn">connect</span>();
+<span class="kw">try</span> {
+  <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'BEGIN'</span>);
+  <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'UPDATE accounts SET balance = balance - $1 WHERE id = $2'</span>, [amount, fromId]);
+  <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'UPDATE accounts SET balance = balance + $1 WHERE id = $2'</span>, [amount, toId]);
+  <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">'COMMIT'</span>);
+} <span class="kw">finally</span> {
+  client.<span class="fn">release</span>();
+}
+</pre>
+    </div>
+  </div>
+
+  <!-- INDIVIDUAL FUNCTION WRAPPING -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Wrap specific query functions</h2>
+    <p class="section-body">When you have repository or data-access functions, wrap them individually. This keeps slowdep out of your production Pool configuration and makes it easy to toggle per function.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> });
+
+<span class="cm">// Repository functions — wrap each data-access function individually</span>
+<span class="kw">async function</span> <span class="fn">findUserByEmail</span>(email: string) {
+  <span class="kw">const</span> { rows } = <span class="kw">await</span> pool.<span class="fn">query</span>(
+    <span class="str">'SELECT * FROM users WHERE email = $1'</span>, [email]
+  );
+  <span class="kw">return</span> rows[<span class="num">0</span>] ?? <span class="kw">null</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">insertUser</span>(email: string, name: string) {
+  <span class="kw">const</span> { rows } = <span class="kw">await</span> pool.<span class="fn">query</span>(
+    <span class="str">'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *'</span>,
+    [email, name]
+  );
+  <span class="kw">return</span> rows[<span class="num">0</span>];
+}
+
+<span class="cm">// Wrap the repository functions, not the pool</span>
+<span class="kw">export const</span> <span class="acc">slowFindUserByEmail</span> = <span class="fn">withLatency</span>(findUserByEmail, <span class="str">'postgres'</span>);
+<span class="kw">export const</span> <span class="acc">slowInsertUser</span>      = <span class="fn">withLatency</span>(insertUser, <span class="str">'postgres'</span>);
+</pre>
+    </div>
+  </div>
+
+  <!-- JEST TEST -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Jest test: query timeout and retry</h2>
+    <p class="section-body">The most important thing to verify is that your application correctly handles slow or failed queries. Use slowdep to drive both scenarios deterministically in Jest.</p>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'pg-timeout')">Timeout test</button>
+      <button class="tab" onclick="switchTab(this,'pg-retry')">Retry test</button>
+      <button class="tab" onclick="switchTab(this,'pg-pool')">Pool exhaustion</button>
+    </div>
+    <div id="pg-timeout" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { getUserById } <span class="kw">from</span> <span class="str">'../src/users'</span>;
+
+<span class="cm">// Simulate a very slow Postgres query — p99 of a bad day</span>
+<span class="kw">const</span> slowQuery = <span class="fn">withLatency</span>(
+  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ rows: [{ id: <span class="num">1</span>, name: <span class="str">'Alice'</span> }] }),
+  { p50: <span class="num">300</span>, p99: <span class="num">1200</span> }   <span class="cm">// simulate a stressed database</span>
+);
+
+<span class="fn">test</span>(<span class="str">'getUserById times out after 500ms'</span>, <span class="kw">async</span> () => {
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    Promise.<span class="fn">race</span>([
+      <span class="fn">getUserById</span>(<span class="num">1</span>, { queryFn: slowQuery }),
+      <span class="kw">new</span> <span class="fn">Promise</span>((_, reject) =>
+        <span class="fn">setTimeout</span>(() => reject(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'timeout'</span>)), <span class="num">500</span>)
+      )
+    ])
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'timeout'</span>);
+}, <span class="num">3000</span>);
+</pre></div></div>
+
+    <div id="pg-retry" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// errorRate: 1.0 forces every call to fail — great for retry logic tests</span>
+<span class="kw">const</span> alwaysFails = <span class="fn">withLatency</span>(
+  jest.<span class="fn">fn</span>().<span class="fn">mockRejectedValue</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Connection reset by peer'</span>)),
+  { p50: <span class="num">5</span>, p99: <span class="num">200</span>, errorRate: <span class="num">1.0</span> }
+);
+
+<span class="fn">test</span>(<span class="str">'retries up to 3 times on connection error'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> mockQuery = jest.<span class="fn">fn</span>()
+    .<span class="fn">mockRejectedValueOnce</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Connection reset'</span>))
+    .<span class="fn">mockRejectedValueOnce</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Connection reset'</span>))
+    .<span class="fn">mockResolvedValueOnce</span>({ rows: [{ id: <span class="num">42</span> }] });
+
+  <span class="kw">const</span> slowMock = <span class="fn">withLatency</span>(mockQuery, <span class="str">'postgres'</span>);
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">queryWithRetry</span>(slowMock, <span class="str">'SELECT 1'</span>, { maxRetries: <span class="num">3</span> });
+  <span class="fn">expect</span>(result.rows[<span class="num">0</span>].id).<span class="fn">toBe</span>(<span class="num">42</span>);
+  <span class="fn">expect</span>(mockQuery).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">3</span>);
+});
+</pre></div></div>
+
+    <div id="pg-pool" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'pool exhaustion: 11th concurrent query waits for a slot'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span>, max: <span class="num">10</span> });
+  <span class="kw">const</span> slow = <span class="fn">withLatencyAll</span>(pool, <span class="str">'postgres'</span>);
+
+  <span class="cm">// Fire 11 concurrent queries against a pool of 10</span>
+  <span class="kw">const</span> queries = Array.<span class="fn">from</span>({ length: <span class="num">11</span> }, (_, i) =>
+    slow.<span class="fn">query</span>(<span class="str">'SELECT pg_sleep(0.1), $1::int AS n'</span>, [i])
+  );
+
+  <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+  <span class="kw">const</span> results = <span class="kw">await</span> Promise.<span class="fn">all</span>(queries);
+  <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
+
+  <span class="fn">expect</span>(results).<span class="fn">toHaveLength</span>(<span class="num">11</span>);
+  <span class="cm">// 11th query had to wait for a slot, so total > 200ms</span>
+  <span class="fn">expect</span>(elapsed).<span class="fn">toBeGreaterThan</span>(<span class="num">200</span>);
+
+  <span class="kw">await</span> pool.<span class="fn">end</span>();
+});
+</pre></div></div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Only enable in development and test</h2>
+    <p class="section-body">Never run slowdep in production. Use a conditional wrap that checks <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">NODE_ENV</code> before applying latency. This pattern is zero-overhead in production — the condition is evaluated once at startup.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> });
+
+<span class="cm">// Zero overhead in production — condition evaluated once at startup</span>
+<span class="kw">export const</span> <span class="acc">db</span> = process.env.<span class="acc">NODE_ENV</span> !== <span class="str">'production'</span>
+  ? <span class="fn">withLatencyAll</span>(pool, <span class="str">'postgres'</span>)
+  : pool;
+
+<span class="cm">// Use db.query everywhere in your service</span>
+<span class="kw">const</span> { rows } = <span class="kw">await</span> <span class="acc">db</span>.<span class="fn">query</span>(<span class="str">'SELECT * FROM orders WHERE user_id = $1'</span>, [uid]);
+</pre>
+    </div>
+    <div class="callout" style="margin-top:1.25rem;">
+      <div class="callout-title">Tip</div>
+      <p>You can also gate on a dedicated env var like <code>SLOWDEP_ENABLED=true</code> in <code>.env.development</code> and <code>.env.test</code>. This lets you disable slowdep even in development when you need fast iteration without changing <code>NODE_ENV</code>.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Query timeout calibration</strong> — does your 500ms timeout actually fire before the request handler returns a 504?</li>
+        <li><strong>Connection pool exhaustion</strong> — when all 10 pool connections are busy, does the 11th request queue or error?</li>
+        <li><strong>Transaction rollback on slow commit</strong> — if COMMIT takes 200ms and your request budget is 300ms, does the partial transaction get cleaned up?</li>
+        <li><strong>N+1 query detection</strong> — realistic per-query latency makes N+1 patterns immediately visible in test timing output</li>
+        <li><strong>Retry logic correctness</strong> — set <code>errorRate: 1.0</code> on a mock to force failures and verify your retry handler respects backoff</li>
+        <li><strong>Circuit breaker thresholds</strong> — drive the p99 tail to trigger your circuit breaker, then verify it opens after the right number of failures</li>
+        <li><strong>Slow query logging</strong> — verify your observability layer logs queries that exceed a threshold</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Fully typed integration</h2>
+    <p class="section-body">slowdep preserves the return type of the wrapped function. The wrapped <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">pool.query</code> is still typed as returning <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">Promise&lt;QueryResult&gt;</code> — no type casting needed.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { Pool, QueryResult } <span class="kw">from</span> <span class="str">'pg'</span>;
+<span class="kw">import</span> { withLatency, withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="fn">Pool</span>({ connectionString: process.env.<span class="acc">DATABASE_URL</span> });
+
+<span class="cm">// Type is inferred: (text: string, values?: any[]) => Promise&lt;QueryResult&gt;</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(pool.query.<span class="fn">bind</span>(pool), <span class="str">'postgres'</span>);
+
+<span class="kw">interface</span> <span class="fn">User</span> {
+  id: <span class="kw">number</span>;
+  email: <span class="kw">string</span>;
+  created_at: <span class="fn">Date</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">findUsers</span>(): Promise&lt;User[]&gt; {
+  <span class="cm">// QueryResult&lt;User&gt; — fully typed, no casting</span>
+  <span class="kw">const</span> result: QueryResult&lt;User&gt; = <span class="kw">await</span> <span class="acc">slowQuery</span>(
+    <span class="str">'SELECT id, email, created_at FROM users ORDER BY created_at DESC'</span>
+  );
+  <span class="kw">return</span> result.rows;
+}
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

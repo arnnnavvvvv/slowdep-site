@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lognormal distribution — slowdep learn</title>
+<meta name="description" content="Why network latency follows a lognormal distribution, and how slowdep uses Box-Muller sampling to simulate realistic delay from just two numbers: p50 and p99.">
+<link rel="canonical" href="https://slowdeps.site/learn/lognormal-distribution/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Learn<span>/</span>Lognormal distribution</div>
+    <h1 class="page-title">Lognormal distribution</h1>
+    <p class="page-desc">Why network latency follows a lognormal distribution, and how slowdep uses it to simulate realistic delay from just two numbers: p50 and p99.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">background</div>
+    <h2 class="section-title">What a lognormal distribution is</h2>
+    <p class="section-body">A random variable X is lognormal if its natural logarithm, ln(X), follows a normal distribution. It is defined by two parameters: mu (µ), the mean of the underlying normal, and sigma (s), the standard deviation.</p>
+    <p class="section-body" style="margin-top:0.6rem;">Key properties that make it useful for latency modelling: it is always positive (latency can't be negative), it is right-skewed (most values cluster near the median, with a long tail of occasional outliers), and it is fully determined by just two percentile observations.</p>
+    <div class="codeblock" style="margin-top:1.5rem;"><pre><span class="cm">// Lognormal parameters from p50 and p99</span>
+<span class="kw">const</span> mu    = Math.<span class="fn">log</span>(p50);
+<span class="kw">const</span> sigma = (Math.<span class="fn">log</span>(p99) - mu) / <span class="num">2.326</span>;
+<span class="cm">// 2.326 is the z-score of the 99th percentile of the standard normal</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">theory</div>
+    <h2 class="section-title">Why latency is lognormal</h2>
+    <p class="section-body">Network latency is the product of many independent multiplicative factors: processing time in each queue, lock contention, memory access patterns, GC pauses, NIC driver scheduling, kernel context switches. By the central limit theorem applied to products (rather than sums), the product of many independent positive random variables converges to a lognormal distribution.</p>
+    <p class="section-body" style="margin-top:0.6rem;">This is why the lognormal fits empirical latency data so well: fast path responses (warm cache, hot connection pool, no contention) cluster tightly near the median, while the tail stretches out to cover GC pauses, cold starts, and noisy-neighbour events — exactly the shape you see in APM dashboards.</p>
+    <div class="callout tip">
+      <div class="callout-title">Why not normal?</div>
+      <p>A normal distribution allows negative values and is symmetric — neither fits latency. A normal with mean 10ms would assign significant probability to -5ms. Lognormal is always positive and right-skewed, matching reality.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">sampling</div>
+    <h2 class="section-title">Box-Muller transform</h2>
+    <p class="section-body">To sample from a lognormal, you need a standard normal sample first. JavaScript has no built-in for this — <code>Math.random()</code> only gives a uniform [0, 1] value. The Box-Muller transform converts two independent uniform samples into two independent standard normal samples:</p>
+    <div class="codeblock"><pre><span class="kw">function</span> <span class="fn">lognormalSample</span>(mu, sigma) {
+  <span class="kw">const</span> u1 = Math.<span class="fn">random</span>();
+  <span class="kw">const</span> u2 = Math.<span class="fn">random</span>();
+  <span class="cm">// Box-Muller: produces Z ~ N(0,1)</span>
+  <span class="kw">const</span> z = Math.<span class="fn">sqrt</span>(-<span class="num">2</span> * Math.<span class="fn">log</span>(u1)) * Math.<span class="fn">cos</span>(<span class="num">2</span> * Math.PI * u2);
+  <span class="cm">// Map to lognormal</span>
+  <span class="kw">return</span> Math.<span class="fn">exp</span>(mu + sigma * z);
+}</pre></div>
+    <p class="section-body" style="margin-top:1rem;">slowdep caps the result at <code>p99 * 3</code> to prevent runaway outliers from making tests hang. In practice the cap is rarely reached — it would require a z-score far into the tail.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">fitting</div>
+    <h2 class="section-title">Fitting mu and sigma from p50 and p99</h2>
+    <p class="section-body">You have two observations (p50 and p99) and two unknowns (mu and sigma). Because ln(X) ~ N(mu, sigma²), you can write:</p>
+    <div class="codeblock"><pre>ln(p50) = mu + sigma * z_0.50   <span class="cm">// z_0.50 = 0 (median of standard normal)</span>
+ln(p99) = mu + sigma * z_0.99   <span class="cm">// z_0.99 ˜ 2.326</span>
+
+<span class="cm">// Solving:</span>
+mu    = ln(p50)
+sigma = (ln(p99) - ln(p50)) / 2.326</pre></div>
+    <p class="section-body" style="margin-top:1rem;">This means slowdep only needs two numbers from you — the typical latency (p50) and the worst-case you care about (p99) — and it derives the full distribution automatically.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">distributions compared</div>
+    <h2 class="section-title">Uniform vs normal vs lognormal</h2>
+    <table class="cmp-table">
+      <tr><th>distribution</th><th>always positive</th><th>realistic tail</th><th>matches APM data</th><th>parametrised by percentiles</th></tr>
+      <tr><td>Uniform (setTimeout)</td><td><span class="yes">yes</span></td><td><span class="no">no — no tail at all</span></td><td><span class="no">no</span></td><td><span class="no">no</span></td></tr>
+      <tr><td>Normal (Gaussian)</td><td><span class="no">no — allows negatives</span></td><td><span class="partial">symmetric</span></td><td><span class="no">no</span></td><td><span class="partial">sort of</span></td></tr>
+      <tr><td>Lognormal (slowdep)</td><td><span class="yes">yes</span></td><td><span class="yes">yes — right-skewed</span></td><td><span class="yes">yes</span></td><td><span class="yes">yes — p50 + p99</span></td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">further reading</div>
+    <h2 class="section-title">Related topics</h2>
+    <div class="card-grid">
+      <a href="/learn/tail-latency/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">Tail latency</div>
+        <div class="card-body">Why the 99th percentile matters more than the average.</div>
+      </a>
+      <a href="/learn/p99-latency/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">p99 latency</div>
+        <div class="card-body">What p99 means, how to find it, and how to use it in slowdep.</div>
+      </a>
+      <a href="/guides/why-not-settimeout/" class="card">
+        <div class="card-label">Guide</div>
+        <div class="card-title">Why not setTimeout?</div>
+        <div class="card-body">The practical difference between flat and lognormal delay.</div>
+      </a>
+      <a href="/docs/concepts/" class="card">
+        <div class="card-label">Docs</div>
+        <div class="card-title">Core concepts</div>
+        <div class="card-body">How slowdep applies lognormal sampling in practice.</div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,135 @@
+# slowdep
+
+> Wrap any async function with realistic, lognormal latency. Test how your app survives slow, unpredictable dependencies.
+
+## What it does
+
+slowdep is a zero-dependency Node.js/TypeScript library that replaces flat `setTimeout` delays with latency sampled from a lognormal distribution — the same statistical shape real production dependencies produce. Fast most of the time, occasionally slow, rarely very slow.
+
+Use it to stress-test retry logic, timeouts, and circuit breakers without needing a degraded service or slow network.
+
+## Install
+
+```
+npm install slowdep
+```
+
+## API
+
+### withLatency(fn, preset | options)
+
+Wraps a single async function. Returns a new function with the same signature.
+
+```ts
+import { withLatency } from 'slowdep';
+
+// named preset
+const slowQuery = withLatency(db.query, 'postgres');
+
+// custom profile
+const slowFetch = withLatency(fetchAPI, {
+  p50: 100,        // median latency in ms
+  p99: 2000,       // 99th-percentile latency in ms
+  errorRate: 0.01, // fraction of calls that throw a transient error (0–1)
+});
+```
+
+### withLatencyAll(client, preset | options)
+
+Wraps every async method on an object (e.g. a database client).
+
+```ts
+import { withLatencyAll } from 'slowdep';
+
+const slowRedis = withLatencyAll(redisClient, 'redis');
+await slowRedis.get('key');
+await slowRedis.set('k', 'v');
+```
+
+### Options object
+
+| Field       | Type   | Description                                      |
+|-------------|--------|--------------------------------------------------|
+| p50         | number | Median latency in milliseconds                   |
+| p99         | number | 99th-percentile latency in milliseconds          |
+| errorRate   | number | Fraction of calls that reject (default: 0)       |
+
+## Built-in presets
+
+| Preset      | p50    | p95     | p99     | Error rate |
+|-------------|--------|---------|---------|------------|
+| postgres    | 5ms    | 50ms    | 200ms   | 0.1%       |
+| mysql       | 4ms    | 40ms    | 180ms   | 0.1%       |
+| redis       | 1ms    | 5ms     | 20ms    | 0.05%      |
+| mongodb     | 8ms    | 60ms    | 250ms   | 0.1%       |
+| dynamodb    | 3ms    | 15ms    | 50ms    | 0.05%      |
+| s3          | 30ms   | 150ms   | 500ms   | 0.1%       |
+| stripe      | 200ms  | 800ms   | 2000ms  | 0.2%       |
+| openai      | 800ms  | 3000ms  | 8000ms  | 0.5%       |
+| anthropic   | 600ms  | 2500ms  | 7000ms  | 0.5%       |
+| http        | 80ms   | 300ms   | 1000ms  | 1%         |
+
+## How the math works
+
+slowdep fits a lognormal distribution to the p50 and p99 values using the Box-Muller transform:
+
+```
+mu    = ln(p50)
+sigma = (ln(p99) - mu) / 2.326   // 2.326 = z-score for 99th percentile
+delay = exp(mu + sigma * Z)       // Z ~ N(0,1)
+```
+
+The sampled delay is capped at `p99 * 3` to prevent runaway outliers.
+
+## TypeScript
+
+Full TypeScript types are included. No `@types/` package needed.
+
+```ts
+import { withLatency, withLatencyAll } from 'slowdep';
+import type { LatencyOptions, LatencyPreset } from 'slowdep';
+```
+
+## Documentation
+
+- Getting started: https://slowdeps.site/docs/getting-started/
+- API reference: https://slowdeps.site/docs/api-reference/
+- withLatency: https://slowdeps.site/docs/withLatency/
+- withLatencyAll: https://slowdeps.site/docs/withLatencyAll/
+- Presets: https://slowdeps.site/docs/presets/
+- Concepts: https://slowdeps.site/docs/concepts/
+- Best practices: https://slowdeps.site/docs/best-practices/
+- Deterministic testing: https://slowdeps.site/docs/deterministic-testing/
+- Production usage: https://slowdeps.site/docs/production-usage/
+
+## Guides
+
+- Why not setTimeout: https://slowdeps.site/guides/why-not-settimeout/
+- Testing retries: https://slowdeps.site/guides/testing-retries/
+- Testing timeouts: https://slowdeps.site/guides/testing-timeouts/
+- Testing circuit breakers: https://slowdeps.site/guides/testing-circuit-breakers/
+- AI applications: https://slowdeps.site/guides/ai-applications/
+- CI testing: https://slowdeps.site/guides/ci-testing/
+
+## Integrations
+
+- PostgreSQL: https://slowdeps.site/integrations/postgres/
+- Redis: https://slowdeps.site/integrations/redis/
+- MongoDB: https://slowdeps.site/integrations/mongodb/
+- Prisma: https://slowdeps.site/integrations/prisma/
+- OpenAI: https://slowdeps.site/integrations/openai/
+- Anthropic: https://slowdeps.site/integrations/anthropic/
+- Stripe: https://slowdeps.site/integrations/stripe/
+- AWS S3: https://slowdeps.site/integrations/aws-s3/
+- Next.js: https://slowdeps.site/integrations/nextjs/
+- fetch / axios: https://slowdeps.site/integrations/fetch/
+
+## Links
+
+- npm: https://www.npmjs.com/package/slowdep
+- GitHub: https://github.com/arnnnavvvvv/slowdep
+- Site: https://slowdeps.site
+
+## License
+
+MIT

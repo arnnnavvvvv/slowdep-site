@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API reference — slowdep</title>
+<meta name="description" content="Complete API reference for slowdep — all exports, types, and options.">
+<link rel="canonical" href="https://slowdeps.site/docs/api-reference/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>API reference</div>
+    <h1 class="page-title">API reference</h1>
+    <p class="page-desc">Complete API reference for slowdep — all exports, types, and options.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Exports</div>
+    <h2 class="section-title">All exports</h2>
+    <p class="section-body">slowdep exports two functions and three types.</p>
+
+    <table class="param-table">
+      <tr><th>export</th><th>kind</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">withLatency</td>
+        <td class="param-type">function</td>
+        <td class="param-desc">Wraps a single async function with lognormal latency and optional error injection.</td>
+      </tr>
+      <tr>
+        <td class="param-name">withLatencyAll</td>
+        <td class="param-type">function</td>
+        <td class="param-desc">Wraps every async method on an object with the same latency profile.</td>
+      </tr>
+      <tr>
+        <td class="param-name">LatencyOptions</td>
+        <td class="param-type">interface</td>
+        <td class="param-desc">The shape of a custom latency profile object ({ p50, p99, errorRate? }).</td>
+      </tr>
+      <tr>
+        <td class="param-name">LatencyPreset</td>
+        <td class="param-type">type</td>
+        <td class="param-desc">Union of all preset string literals.</td>
+      </tr>
+      <tr>
+        <td class="param-name">LatencyProfile</td>
+        <td class="param-type">type</td>
+        <td class="param-desc">Union of LatencyPreset and LatencyOptions — the type accepted by both functions.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Functions</div>
+    <h2 class="section-title">withLatency</h2>
+
+    <div class="codeblock"><pre><span class="kw">function</span> <span class="fn">withLatency</span>&lt;
+  T <span class="kw">extends</span> (...args: <span class="kw">any</span>[]) => Promise&lt;<span class="kw">any</span>&gt;
+&gt;(
+  fn: T,
+  profile: <span class="acc">LatencyProfile</span>
+): T</pre></div>
+
+    <table class="param-table" style="margin-top:1rem;">
+      <tr><th>param</th><th>type</th><th>required</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">fn</td>
+        <td class="param-type">(...args: any[]) =&gt; Promise&lt;any&gt;</td>
+        <td class="param-type">yes</td>
+        <td class="param-desc">Async function to wrap. Must return a Promise.</td>
+      </tr>
+      <tr>
+        <td class="param-name">profile</td>
+        <td class="param-type">LatencyProfile</td>
+        <td class="param-type">yes</td>
+        <td class="param-desc">Preset string name or custom options object.</td>
+      </tr>
+    </table>
+
+    <p class="section-body" style="margin-top:1rem;"><strong>Returns:</strong> T — same type as fn. Each call samples lognormal delay, optionally rejects (errorRate), then delegates to fn.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Functions</div>
+    <h2 class="section-title">withLatencyAll</h2>
+
+    <div class="codeblock"><pre><span class="kw">function</span> <span class="fn">withLatencyAll</span>&lt;T <span class="kw">extends</span> object&gt;(
+  client: T,
+  profile: <span class="acc">LatencyProfile</span>
+): T</pre></div>
+
+    <table class="param-table" style="margin-top:1rem;">
+      <tr><th>param</th><th>type</th><th>required</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">client</td>
+        <td class="param-type">object</td>
+        <td class="param-type">yes</td>
+        <td class="param-desc">Any object. All methods returning a Promise are wrapped. Synchronous methods pass through.</td>
+      </tr>
+      <tr>
+        <td class="param-name">profile</td>
+        <td class="param-type">LatencyProfile</td>
+        <td class="param-type">yes</td>
+        <td class="param-desc">Applied uniformly to all wrapped methods.</td>
+      </tr>
+    </table>
+
+    <p class="section-body" style="margin-top:1rem;"><strong>Returns:</strong> T — new object with same shape as client. this binding is preserved on all wrapped methods.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Types</div>
+    <h2 class="section-title">LatencyOptions interface</h2>
+
+    <div class="codeblock"><pre><span class="kw">interface</span> <span class="acc">LatencyOptions</span> {
+  p50: <span class="kw">number</span>         <span class="cm">// median latency in ms (required)</span>
+  p99: <span class="kw">number</span>         <span class="cm">// 99th-percentile latency in ms (required, must be > p50)</span>
+  errorRate?: <span class="kw">number</span>  <span class="cm">// fraction of calls that reject [0, 1] (default: 0)</span>
+}</pre></div>
+
+    <table class="param-table" style="margin-top:1rem;">
+      <tr><th>field</th><th>type</th><th>default</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">p50</td>
+        <td class="param-type">number</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">Median latency in milliseconds. Half of sampled delays fall below this value.</td>
+      </tr>
+      <tr>
+        <td class="param-name">p99</td>
+        <td class="param-type">number</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">99th-percentile latency in milliseconds. Must be greater than p50. Used with p50 to parameterize the lognormal distribution.</td>
+      </tr>
+      <tr>
+        <td class="param-name">errorRate</td>
+        <td class="param-type">number</td>
+        <td class="param-default">0</td>
+        <td class="param-desc">Fraction of calls that reject with <code>new Error('Simulated transient error')</code> before the underlying function is called. Range 0–1.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Types</div>
+    <h2 class="section-title">LatencyPreset type</h2>
+
+    <div class="codeblock"><pre><span class="kw">type</span> <span class="acc">LatencyPreset</span> =
+  | <span class="str">'postgres'</span>
+  | <span class="str">'mysql'</span>
+  | <span class="str">'redis'</span>
+  | <span class="str">'mongodb'</span>
+  | <span class="str">'dynamodb'</span>
+  | <span class="str">'s3'</span>
+  | <span class="str">'stripe'</span>
+  | <span class="str">'openai'</span>
+  | <span class="str">'anthropic'</span>
+  | <span class="str">'http'</span>
+
+<span class="kw">type</span> <span class="acc">LatencyProfile</span> = <span class="acc">LatencyPreset</span> | <span class="acc">LatencyOptions</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Preset values</div>
+    <h2 class="section-title">All preset values</h2>
+
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span>
+        <span>p50</span>
+        <span>p95</span>
+        <span>p99</span>
+        <span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">postgres</span>
+        <span class="preset-val">5ms</span>
+        <span class="preset-val">50ms</span>
+        <span class="preset-val">200ms</span>
+        <span class="preset-err">0.001</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">mysql</span>
+        <span class="preset-val">4ms</span>
+        <span class="preset-val">40ms</span>
+        <span class="preset-val">180ms</span>
+        <span class="preset-err">0.001</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">redis</span>
+        <span class="preset-val">1ms</span>
+        <span class="preset-val">5ms</span>
+        <span class="preset-val">20ms</span>
+        <span class="preset-err">0.0005</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">mongodb</span>
+        <span class="preset-val">8ms</span>
+        <span class="preset-val">60ms</span>
+        <span class="preset-val">250ms</span>
+        <span class="preset-err">0.001</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">dynamodb</span>
+        <span class="preset-val">3ms</span>
+        <span class="preset-val">15ms</span>
+        <span class="preset-val">50ms</span>
+        <span class="preset-err">0.0005</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">s3</span>
+        <span class="preset-val">30ms</span>
+        <span class="preset-val">150ms</span>
+        <span class="preset-val">500ms</span>
+        <span class="preset-err">0.001</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">stripe</span>
+        <span class="preset-val">200ms</span>
+        <span class="preset-val">800ms</span>
+        <span class="preset-val">2000ms</span>
+        <span class="preset-err">0.002</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">openai</span>
+        <span class="preset-val">800ms</span>
+        <span class="preset-val">3000ms</span>
+        <span class="preset-val">8000ms</span>
+        <span class="preset-err">0.005</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">anthropic</span>
+        <span class="preset-val">600ms</span>
+        <span class="preset-val">2500ms</span>
+        <span class="preset-val">7000ms</span>
+        <span class="preset-err">0.005</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">http</span>
+        <span class="preset-val">80ms</span>
+        <span class="preset-val">300ms</span>
+        <span class="preset-val">1000ms</span>
+        <span class="preset-err">0.01</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Math</div>
+    <h2 class="section-title">Distribution formula</h2>
+    <p class="section-body">The lognormal distribution is parameterized from p50 and p99 as follows:</p>
+
+    <div class="codeblock"><pre><span class="cm">// Parameters derived from preset or LatencyOptions</span>
+mu    = ln(p50)
+sigma = (ln(p99) - ln(p50)) / <span class="num">2.326</span>
+
+<span class="cm">// Box-Muller transform: two uniform ? standard normal z</span>
+u1    = Math.<span class="fn">random</span>()
+u2    = Math.<span class="fn">random</span>()
+z     = sqrt(-<span class="num">2</span> * ln(u1)) * cos(<span class="num">2</span> * Math.PI * u2)
+
+<span class="cm">// Lognormal sample (milliseconds)</span>
+delay = exp(mu + sigma * z)
+
+<span class="cm">// Cap at 3× p99 to bound the theoretical infinite tail</span>
+delay = min(delay, p99 * <span class="num">3</span>)</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">The constant 2.326 is the z-score of the 99th percentile of the standard normal distribution (invNorm(0.99) ˜ 2.326).</p>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

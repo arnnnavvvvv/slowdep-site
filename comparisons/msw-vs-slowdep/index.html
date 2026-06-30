@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSW vs slowdep — comparison</title>
+<meta name="description" content="MSW intercepts HTTP at the service-worker/network level. slowdep wraps functions. They compose well.">
+<link rel="canonical" href="https://slowdeps.site/comparisons/msw-vs-slowdep/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/settimeout-vs-slowdep/" class="nav-link active">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Comparisons<span>/</span>MSW vs slowdep</div>
+    <h1 class="page-title">MSW vs slowdep</h1>
+    <p class="page-desc">MSW intercepts HTTP at the service-worker/network level. slowdep wraps functions. They compose well.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">Key insight</div>
+    <h2 class="section-title">Complementary, not competing</h2>
+    <p class="section-body">
+      MSW (Mock Service Worker) and slowdep solve different problems. MSW intercepts HTTP requests
+      and returns mock responses — it replaces the <em>content</em> of API calls.
+      slowdep adds realistic latency to function calls — it replaces the <em>timing</em> of those calls.
+    </p>
+    <p class="section-body">
+      Used together, they give you the best of both worlds: MSW provides the mock response
+      (no real API needed), and slowdep adds the latency profile that makes the mock behave
+      like the real thing from a timing perspective.
+    </p>
+    <div class="callout tip">
+      <div class="callout-title">The combination</div>
+      <p>MSW handles <em>what</em> comes back. slowdep handles <em>how long</em> it takes. Together they give you realistic integration test behavior without any real external services.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Feature comparison</div>
+    <h2 class="section-title">What each tool does</h2>
+    <table class="cmp-table">
+      <tr><th>feature</th><th>MSW</th><th>slowdep</th></tr>
+      <tr>
+        <td>what it intercepts</td>
+        <td>HTTP requests (fetch, XMLHttpRequest)</td>
+        <td>any async function call</td>
+      </tr>
+      <tr>
+        <td>latency simulation</td>
+        <td><span class="partial">manual — add delay: in resolver</span></td>
+        <td><span class="yes">automatic — lognormal distribution</span></td>
+      </tr>
+      <tr>
+        <td>response mocking</td>
+        <td><span class="yes">full — status, headers, body</span></td>
+        <td><span class="no">none — passes through to real function</span></td>
+      </tr>
+      <tr>
+        <td>works in Node.js</td>
+        <td><span class="yes">yes — msw/node</span></td>
+        <td><span class="yes">yes</span></td>
+      </tr>
+      <tr>
+        <td>works in browser</td>
+        <td><span class="yes">yes — service worker</span></td>
+        <td><span class="partial">yes — wraps fetch or SDK functions</span></td>
+      </tr>
+      <tr>
+        <td>non-HTTP dependencies</td>
+        <td><span class="no">no — HTTP only</span></td>
+        <td><span class="yes">yes — Postgres, Redis, any async fn</span></td>
+      </tr>
+      <tr>
+        <td>error injection</td>
+        <td><span class="yes">yes — return error responses</span></td>
+        <td><span class="yes">yes — errorRate option</span></td>
+      </tr>
+      <tr>
+        <td>composability</td>
+        <td>use alongside slowdep</td>
+        <td>use alongside MSW</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Composing</div>
+    <h2 class="section-title">Using MSW and slowdep together</h2>
+    <p class="section-body">
+      The composition pattern: MSW intercepts HTTP and returns a fixture. slowdep wraps the
+      HTTP client function to add latency before the MSW handler is even invoked.
+      Or: use MSW as the mock layer and wrap it with slowdep at the SDK level.
+    </p>
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'t-msw1')">wrap the SDK</button>
+      <button class="tab" onclick="switchTab(this,'t-msw2')">add delay in MSW handler</button>
+    </div>
+    <div id="t-msw1" class="code-panel active">
+      <div class="code-block"><pre><span class="cm">// Approach 1: wrap the SDK function with slowdep</span>
+<span class="cm">// MSW handles the response; slowdep adds latency at the SDK level</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { http, HttpResponse } <span class="kw">from</span> <span class="str">'msw'</span>;
+<span class="kw">import</span> { setupServer } <span class="kw">from</span> <span class="str">'msw/node'</span>;
+
+<span class="kw">const</span> server = <span class="fn">setupServer</span>(
+  http.<span class="fn">get</span>(<span class="str">'/api/users/:id'</span>, () =&gt; <span class="fn">HttpResponse</span>.<span class="fn">json</span>({ id: <span class="str">'1'</span>, name: <span class="str">'Alice'</span> }))
+);
+
+<span class="kw">const</span> realisticFetch = <span class="fn">withLatency</span>(
+  (url: <span class="acc">string</span>) =&gt; <span class="fn">fetch</span>(url).<span class="fn">then</span>(r =&gt; r.<span class="fn">json</span>()),
+  { p50: <span class="num">80</span>, p99: <span class="num">1000</span> } <span class="cm">// HTTP preset: p50 80ms, p99 1s</span>
+);
+
+<span class="fn">it</span>(<span class="str">'loads user with realistic HTTP latency'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="cm">// MSW returns the fixture; slowdep adds the delay</span>
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">realisticFetch</span>(<span class="str">'/api/users/1'</span>);
+  <span class="fn">expect</span>(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>);
+});</pre></div>
+    </div>
+    <div id="t-msw2" class="code-panel">
+      <div class="code-block"><pre><span class="cm">// Approach 2: add delay directly in the MSW handler</span>
+<span class="cm">// Uses MSW's built-in delay helper (fixed delay, not lognormal)</span>
+<span class="kw">import</span> { http, HttpResponse, delay } <span class="kw">from</span> <span class="str">'msw'</span>;
+
+<span class="kw">const</span> server = <span class="fn">setupServer</span>(
+  http.<span class="fn">get</span>(<span class="str">'/api/users/:id'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">await</span> <span class="fn">delay</span>(<span class="num">200</span>); <span class="cm">// fixed 200ms — not lognormal</span>
+    <span class="kw">return</span> <span class="fn">HttpResponse</span>.<span class="fn">json</span>({ id: <span class="str">'1'</span>, name: <span class="str">'Alice'</span> });
+  })
+);
+
+<span class="cm">// Note: MSW's delay is a fixed value, not a distribution.</span>
+<span class="cm">// For realistic latency, prefer Approach 1 (wrap the fetch function).</span>
+<span class="cm">// Use this approach when you only care about "some delay" and not</span>
+<span class="cm">// testing latency-dependent behavior like retries or timeouts.</span></pre></div>
+    </div>
+    <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Non-HTTP</div>
+    <h2 class="section-title">For non-HTTP dependencies, use slowdep directly</h2>
+    <p class="section-body">
+      MSW only intercepts HTTP. For Postgres, Redis, MongoDB, S3, or any other non-HTTP
+      dependency, slowdep is the right tool. No other tool in the JavaScript ecosystem
+      gives you realistic lognormal latency for database client function calls.
+    </p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="acc">withLatencyAll</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// MSW handles HTTP mocking</span>
+<span class="cm">// slowdep handles everything else</span>
+<span class="kw">const</span> db     = <span class="fn">withLatencyAll</span>(mockPgClient,    <span class="str">'postgres'</span>); <span class="cm">// p50:5ms p99:200ms</span>
+<span class="kw">const</span> cache  = <span class="fn">withLatencyAll</span>(mockRedisClient, <span class="str">'redis'</span>);   <span class="cm">// p50:1ms p99:20ms</span>
+<span class="kw">const</span> bucket = <span class="fn">withLatencyAll</span>(mockS3Client,    <span class="str">'s3'</span>);     <span class="cm">// p50:30ms p99:500ms</span>
+
+<span class="cm">// your service uses real-feeling dependencies, no actual infra</span>
+<span class="kw">const</span> svc = <span class="kw">new</span> <span class="fn">UserService</span>({ db, cache, bucket });</pre></div>
+    <div class="callout">
+      <div class="callout-title">Full-stack realistic testing</div>
+      <p>MSW for HTTP APIs + slowdep for databases and caches = a complete realistic dependency layer with no real external services required.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

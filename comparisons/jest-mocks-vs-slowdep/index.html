@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jest mocks vs slowdep — comparison</title>
+<meta name="description" content="jest.mock() returns instantly. slowdep adds realistic latency. Use mocks for unit tests, slowdep for integration tests.">
+<link rel="canonical" href="https://slowdeps.site/comparisons/jest-mocks-vs-slowdep/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/settimeout-vs-slowdep/" class="nav-link active">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Comparisons<span>/</span>Jest mocks vs slowdep</div>
+    <h1 class="page-title">Jest mocks vs slowdep</h1>
+    <p class="page-desc">jest.mock() returns instantly. slowdep adds realistic latency. Use mocks for unit tests, slowdep for integration tests.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">Key insight</div>
+    <h2 class="section-title">Don't replace mocks with slowdep</h2>
+    <p class="section-body">
+      Jest mocks and slowdep serve different purposes at different levels of the test pyramid.
+      Jest mocks give you isolation and control: every call returns exactly what you configured,
+      instantly, with no side effects. That's exactly what you want for unit tests where you're
+      testing a function's logic in isolation.
+    </p>
+    <p class="section-body">
+      slowdep gives you realism: it wraps the real (or mock) function and adds a latency
+      distribution. Use it when you're testing <em>how your code behaves</em> when a dependency
+      is slow — not when you're testing what the dependency returns. These are separate concerns.
+    </p>
+    <div class="callout">
+      <div class="callout-title">The rule</div>
+      <p>Unit tests: use Jest mocks for isolation, speed, and control. Integration tests: use slowdep (wrapping a mock or a real function) to add realistic latency.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Feature comparison</div>
+    <h2 class="section-title">Comparison table</h2>
+    <table class="cmp-table">
+      <tr><th>feature</th><th>jest.mock()</th><th>slowdep</th></tr>
+      <tr>
+        <td>response time</td>
+        <td><span class="partial">synchronous / instant</span></td>
+        <td><span class="yes">lognormal distribution (realistic)</span></td>
+      </tr>
+      <tr>
+        <td>error simulation</td>
+        <td><span class="yes">explicit — .mockRejectedValue()</span></td>
+        <td><span class="yes">probabilistic — errorRate option</span></td>
+      </tr>
+      <tr>
+        <td>realistic behavior</td>
+        <td><span class="no">no — always instant</span></td>
+        <td><span class="yes">yes — lognormal latency</span></td>
+      </tr>
+      <tr>
+        <td>test isolation</td>
+        <td><span class="yes">complete — no side effects possible</span></td>
+        <td><span class="partial">partial — wraps real or mock function</span></td>
+      </tr>
+      <tr>
+        <td>setup complexity</td>
+        <td><span class="yes">zero — built into Jest</span></td>
+        <td><span class="yes">minimal — one import, one wrap</span></td>
+      </tr>
+      <tr>
+        <td>call tracking</td>
+        <td><span class="yes">full — .mock.calls, .mock.results</span></td>
+        <td><span class="no">none — compose with jest.fn() for tracking</span></td>
+      </tr>
+      <tr>
+        <td>composable with real implementations</td>
+        <td><span class="partial">jest.requireActual()</span></td>
+        <td><span class="yes">wraps any function, real or mock</span></td>
+      </tr>
+      <tr>
+        <td>tests retry logic</td>
+        <td><span class="no">no — errors are deterministic, not probabilistic</span></td>
+        <td><span class="yes">yes — probabilistic errors exercise retry paths</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">When to use</div>
+    <h2 class="section-title">The right tool for the right layer</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Unit tests — use Jest mocks</div>
+          <div class="step-body">
+            You're testing a function in isolation. The dependency behavior doesn't matter —
+            you just need it to return a value. Jest mocks are perfect: instant, deterministic,
+            trackable. <code>jest.fn().mockResolvedValue({ id: 1 })</code> is the right tool.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Integration tests — use slowdep</div>
+          <div class="step-body">
+            You're testing how code behaves when a dependency is slow or unreliable.
+            Wrap the real function (or a mock that returns realistic data) with slowdep.
+            The latency distribution exercises retry logic, timeout handling, and loading states.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Combined — jest.fn() + slowdep</div>
+          <div class="step-body">
+            Get call tracking from jest.fn() and realistic latency from slowdep.
+            <code>withLatency(jest.fn().mockResolvedValue(data), 'postgres')</code> gives you
+            the trackability of a Jest mock with realistic latency behavior.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Code examples</div>
+    <h2 class="section-title">Same scenario, different tools</h2>
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'t-jm')">unit test (jest.mock)</button>
+      <button class="tab" onclick="switchTab(this,'t-sd')">integration test (slowdep)</button>
+      <button class="tab" onclick="switchTab(this,'t-both')">combined</button>
+    </div>
+    <div id="t-jm" class="code-panel active">
+      <div class="code-block"><pre><span class="cm">// Unit test: testing UserService.getUser logic in isolation</span>
+<span class="cm">// Goal: verify the function parses DB response correctly</span>
+<span class="cm">// Latency doesn't matter here — we're testing logic</span>
+
+<span class="fn">jest.mock</span>(<span class="str">'../db'</span>);
+<span class="kw">import</span> { db } <span class="kw">from</span> <span class="str">'../db'</span>;
+<span class="kw">import</span> { <span class="acc">UserService</span> } <span class="kw">from</span> <span class="str">'./UserService'</span>;
+
+<span class="fn">describe</span>(<span class="str">'UserService.getUser'</span>, () =&gt; {
+  <span class="fn">it</span>(<span class="str">'returns null when user not found'</span>, <span class="kw">async</span> () =&gt; {
+    (db.query <span class="kw">as</span> jest.Mock).<span class="fn">mockResolvedValue</span>({ rows: [] });
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">UserService</span>(db).<span class="fn">getUser</span>(<span class="str">'999'</span>);
+    <span class="fn">expect</span>(result).<span class="fn">toBeNull</span>();
+  });
+
+  <span class="fn">it</span>(<span class="str">'maps rows to User objects'</span>, <span class="kw">async</span> () =&gt; {
+    (db.query <span class="kw">as</span> jest.Mock).<span class="fn">mockResolvedValue</span>({
+      rows: [{ id: <span class="str">'1'</span>, name: <span class="str">'Alice'</span>, email: <span class="str">'alice@example.com'</span> }]
+    });
+    <span class="kw">const</span> user = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">UserService</span>(db).<span class="fn">getUser</span>(<span class="str">'1'</span>);
+    <span class="fn">expect</span>(user).<span class="fn">toMatchObject</span>({ name: <span class="str">'Alice'</span>, email: <span class="str">'alice@example.com'</span> });
+  });
+});</pre></div>
+    </div>
+    <div id="t-sd" class="code-panel">
+      <div class="code-block"><pre><span class="cm">// Integration test: testing UserService under realistic DB latency</span>
+<span class="cm">// Goal: verify retry logic fires correctly under slow DB calls</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">describe</span>(<span class="str">'UserService with realistic DB latency'</span>, () =&gt; {
+  <span class="kw">const</span> realData = { rows: [{ id: <span class="str">'1'</span>, name: <span class="str">'Alice'</span> }] };
+
+  <span class="fn">it</span>(<span class="str">'handles occasional DB slowness gracefully'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> slowDb = {
+      query: <span class="fn">withLatency</span>(
+        <span class="kw">async</span> (sql: <span class="acc">string</span>) =&gt; realData,
+        { p50: <span class="num">5</span>, p99: <span class="num">200</span>, errorRate: <span class="num">0.05</span> }
+      ),
+    };
+
+    <span class="cm">// run 20 calls — errorRate ensures retries get exercised</span>
+    <span class="kw">const</span> svc = <span class="kw">new</span> <span class="fn">UserService</span>(slowDb);
+    <span class="kw">const</span> results = <span class="kw">await</span> <span class="fn">Promise</span>.<span class="fn">allSettled</span>(
+      Array.<span class="fn">from</span>({ length: <span class="num">20</span> }, () =&gt; svc.<span class="fn">getUser</span>(<span class="str">'1'</span>))
+    );
+    <span class="kw">const</span> succeeded = results.<span class="fn">filter</span>(r =&gt; r.status === <span class="str">'fulfilled'</span>);
+    <span class="fn">expect</span>(succeeded.length).<span class="fn">toBeGreaterThan</span>(<span class="num">15</span>); <span class="cm">// retries salvage most calls</span>
+  });
+});</pre></div>
+    </div>
+    <div id="t-both" class="code-panel">
+      <div class="code-block"><pre><span class="cm">// Combined: jest.fn() for tracking + slowdep for latency</span>
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">describe</span>(<span class="str">'UserService — tracked realistic test'</span>, () =&gt; {
+  <span class="fn">it</span>(<span class="str">'calls DB exactly once per request under normal conditions'</span>, <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> baseQuery = jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({
+      rows: [{ id: <span class="str">'1'</span>, name: <span class="str">'Alice'</span> }]
+    });
+    <span class="kw">const</span> slowDb = {
+      <span class="cm">// jest.fn() for call tracking, slowdep for latency</span>
+      query: <span class="fn">withLatency</span>(baseQuery, { p50: <span class="num">5</span>, p99: <span class="num">200</span>, errorRate: <span class="num">0</span> }),
+    };
+
+    <span class="kw">const</span> user = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">UserService</span>(slowDb).<span class="fn">getUser</span>(<span class="str">'1'</span>);
+
+    <span class="fn">expect</span>(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>);
+    <span class="fn">expect</span>(baseQuery).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">1</span>);         <span class="cm">// tracked by jest.fn()</span>
+    <span class="fn">expect</span>(baseQuery).<span class="fn">toHaveBeenCalledWith</span>(              <span class="cm">// verified call args</span>
+      <span class="fn">expect</span>.<span class="fn">stringContaining</span>(<span class="str">'SELECT'</span>), [<span class="str">'1'</span>]
+    );
+  });
+});</pre></div>
+    </div>
+    <script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Summary</div>
+    <h2 class="section-title">The test pyramid</h2>
+    <p class="section-body">
+      Think of the test pyramid: unit tests at the base (fast, isolated, Jest mocks), integration
+      tests in the middle (realistic behavior, slowdep), E2E at the top (real services, Toxiproxy or staging).
+      Each layer catches different bugs. Each needs different tools.
+    </p>
+    <table class="cmp-table">
+      <tr><th>layer</th><th>tool</th><th>what it catches</th></tr>
+      <tr><td>unit tests</td><td>jest.mock()</td><td>logic bugs, parsing bugs, branching</td></tr>
+      <tr><td>integration tests</td><td>slowdep + jest.fn()</td><td>retry bugs, timeout bugs, latency UX</td></tr>
+      <tr><td>E2E / staging</td><td>real services or Toxiproxy</td><td>network bugs, infra bugs, system-level behavior</td></tr>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

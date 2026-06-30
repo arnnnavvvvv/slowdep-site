@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + MongoDB — integration</title>
+<meta name="description" content="Add realistic MongoDB latency (p50: 8ms, p99: 250ms) to queries and mutations in tests and local development.">
+<link rel="canonical" href="https://slowdeps.site/integrations/mongodb/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>MongoDB</div>
+    <h1 class="page-title">slowdep + MongoDB</h1>
+    <p class="page-desc">Add realistic MongoDB latency (p50: 8ms, p99: 250ms) to queries and mutations in tests and local development. MongoDB's document model encourages large reads — latency tests expose the cost.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">mongodb latency profile</h2>
+    <p class="section-body">MongoDB latency depends heavily on whether a query hits an index. The preset models indexed queries at p50 (8ms) with a realistic tail for collection scans, large document reads, and write concerns propagating to secondaries.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">mongodb</span>
+        <span class="preset-val">8ms</span>
+        <span class="preset-val">100ms</span>
+        <span class="preset-val">250ms</span>
+        <span class="preset-err">0.1%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Collection scan vs index</div>
+      <p>Production MongoDB shows bimodal latency: indexed queries at 2–15ms and collection scans at 100–500ms. If your local tests run against a small dataset where even unindexed queries are fast, you'll miss missing-index bugs. slowdep adds the realistic distribution that catches these.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap collection methods</h2>
+    <p class="section-body">Wrap the specific collection methods you use. The native MongoDB driver exposes <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">findOne</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">insertOne</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">updateOne</code>, and friends as regular async functions.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { MongoClient } <span class="kw">from</span> <span class="str">'mongodb'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">MongoClient</span>(process.env.<span class="acc">MONGODB_URI</span>);
+<span class="kw">await</span> client.<span class="fn">connect</span>();
+
+<span class="kw">const</span> db = client.<span class="fn">db</span>(<span class="str">'myapp'</span>);
+<span class="kw">const</span> users = db.<span class="fn">collection</span>(<span class="str">'users'</span>);
+
+<span class="cm">// Wrap specific collection methods</span>
+<span class="kw">const</span> <span class="acc">slowFindOne</span>   = <span class="fn">withLatency</span>(users.findOne.<span class="fn">bind</span>(users), <span class="str">'mongodb'</span>);
+<span class="kw">const</span> <span class="acc">slowInsertOne</span> = <span class="fn">withLatency</span>(users.insertOne.<span class="fn">bind</span>(users), <span class="str">'mongodb'</span>);
+<span class="kw">const</span> <span class="acc">slowUpdateOne</span> = <span class="fn">withLatency</span>(users.updateOne.<span class="fn">bind</span>(users), <span class="str">'mongodb'</span>);
+
+<span class="cm">// Now all reads and writes experience realistic latency</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowFindOne</span>({ email: <span class="str">'alice@example.com'</span> });
+<span class="kw">const</span> { insertedId } = <span class="kw">await</span> <span class="acc">slowInsertOne</span>({ email: <span class="str">'bob@example.com'</span>, createdAt: <span class="kw">new</span> <span class="fn">Date</span>() });
+</pre>
+    </div>
+  </div>
+
+  <!-- WRAPPING A COLLECTION -->
+  <div class="section">
+    <div class="section-eyebrow">Wrapping a client</div>
+    <h2 class="section-title">Wrap an entire collection with withLatencyAll</h2>
+    <p class="section-body">For comprehensive coverage, wrap the entire collection object. Every method — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">find</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">aggregate</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">bulkWrite</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">deleteOne</code> — will experience realistic latency.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { MongoClient, Collection } <span class="kw">from</span> <span class="str">'mongodb'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">MongoClient</span>(process.env.<span class="acc">MONGODB_URI</span>);
+<span class="kw">await</span> client.<span class="fn">connect</span>();
+
+<span class="kw">const</span> orders = client.<span class="fn">db</span>(<span class="str">'myapp'</span>).<span class="fn">collection</span>&lt;Order&gt;(<span class="str">'orders'</span>);
+
+<span class="cm">// Wrap every async method on the collection</span>
+<span class="kw">const</span> <span class="acc">slowOrders</span> = <span class="fn">withLatencyAll</span>(orders, <span class="str">'mongodb'</span>);
+
+<span class="cm">// All collection methods now have realistic latency</span>
+<span class="kw">const</span> order = <span class="kw">await</span> <span class="acc">slowOrders</span>.<span class="fn">findOne</span>({ _id: orderId });
+<span class="kw">const</span> recentOrders = <span class="kw">await</span> <span class="acc">slowOrders</span>.<span class="fn">find</span>({ userId, status: <span class="str">'pending'</span> }).<span class="fn">toArray</span>();
+
+<span class="kw">const</span> stats = <span class="kw">await</span> <span class="acc">slowOrders</span>.<span class="fn">aggregate</span>([
+  { $match: { status: <span class="str">'completed'</span> } },
+  { $group: { _id: <span class="str">'$userId'</span>, total: { $sum: <span class="str">'$amount'</span> } } }
+]).<span class="fn">toArray</span>();
+</pre>
+    </div>
+  </div>
+
+  <!-- WITH MONGOOSE -->
+  <div class="section">
+    <div class="section-eyebrow">Mongoose</div>
+    <h2 class="section-title">Use with Mongoose via the native collection</h2>
+    <p class="section-body">Mongoose's model methods (<code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">User.findById</code>, etc.) are chainable query builders, not plain async functions, so they can't be wrapped directly. Instead, access the underlying native driver collection.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> mongoose <span class="kw">from</span> <span class="str">'mongoose'</span>;
+<span class="kw">import</span> { withLatency, withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">await</span> mongoose.<span class="fn">connect</span>(process.env.<span class="acc">MONGODB_URI</span>);
+
+<span class="cm">// Access the native MongoDB collection through Mongoose's connection</span>
+<span class="kw">const</span> nativeUsers = mongoose.connection.db.<span class="fn">collection</span>(<span class="str">'users'</span>);
+
+<span class="cm">// Wrap the native collection — works identically to the native driver</span>
+<span class="kw">const</span> <span class="acc">slowUsers</span> = <span class="fn">withLatencyAll</span>(nativeUsers, <span class="str">'mongodb'</span>);
+
+<span class="cm">// Use the slow native collection for tests</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowUsers</span>.<span class="fn">findOne</span>({ email: <span class="str">'alice@example.com'</span> });
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="acc">slowUsers</span>.<span class="fn">insertOne</span>({
+  email: <span class="str">'carol@example.com'</span>,
+  createdAt: <span class="kw">new</span> <span class="fn">Date</span>()
+});
+
+<span class="cm">// Alternatively, wrap specific Mongoose exec() calls</span>
+<span class="kw">const</span> <span class="acc">slowExec</span> = <span class="fn">withLatency</span>(
+  (query: mongoose.Query&lt;<span class="kw">any</span>, <span class="kw">any</span>&gt;) => query.<span class="fn">exec</span>(),
+  <span class="str">'mongodb'</span>
+);
+
+<span class="kw">const</span> user2 = <span class="kw">await</span> <span class="acc">slowExec</span>(User.<span class="fn">findById</span>(<span class="str">'507f1f77bcf86cd799439011'</span>));
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Why not wrap Mongoose models directly?</div>
+      <p>Mongoose model methods like <code>User.findById()</code> return a Query object, not a Promise. The Promise is only created when you call <code>.exec()</code> or <code>await</code> it. <code>withLatency</code> wraps the function call itself — wrapping <code>User.findById</code> would add latency before the Query is built, not before the DB round-trip. Wrap <code>.exec()</code> or use the native collection instead.</p>
+    </div>
+  </div>
+
+  <!-- TESTING -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Jest tests for query patterns</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'mongo-findone')">findOne timeout</button>
+      <button class="tab" onclick="switchTab(this,'mongo-bulk')">Bulk write</button>
+    </div>
+    <div id="mongo-findone" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { getOrderById } <span class="kw">from</span> <span class="str">'../src/orders'</span>;
+
+<span class="fn">test</span>(<span class="str">'getOrderById times out on slow collection scan'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Simulate a missing index — query takes p99 time</span>
+  <span class="kw">const</span> slowFindOne = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ _id: <span class="str">'o1'</span>, status: <span class="str">'pending'</span> }),
+    { p50: <span class="num">150</span>, p99: <span class="num">600</span> }  <span class="cm">// collection scan latency</span>
+  );
+
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    <span class="fn">getOrderById</span>(<span class="str">'o1'</span>, { findOne: slowFindOne, timeoutMs: <span class="num">300</span> })
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'Query timed out'</span>);
+}, <span class="num">5000</span>);
+</pre></div></div>
+
+    <div id="mongo-bulk" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'bulk write completes within SLA even with latency'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> docs = Array.<span class="fn">from</span>({ length: <span class="num">50</span> }, (_, i) => ({ name: <span class="str">`item-</span>${i}<span class="str">`</span> }));
+
+  <span class="kw">const</span> slowBulkWrite = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ insertedCount: <span class="num">50</span>, acknowledged: <span class="kw">true</span> }),
+    <span class="str">'mongodb'</span>
+  );
+
+  <span class="kw">const</span> start = Date.<span class="fn">now</span>();
+  <span class="kw">const</span> result = <span class="kw">await</span> slowBulkWrite(docs);
+  <span class="kw">const</span> elapsed = Date.<span class="fn">now</span>() - start;
+
+  <span class="cm">// Bulk write is one round-trip — latency applies once, not per document</span>
+  <span class="fn">expect</span>(result.insertedCount).<span class="fn">toBe</span>(<span class="num">50</span>);
+  <span class="fn">expect</span>(elapsed).<span class="fn">toBeLessThan</span>(<span class="num">1000</span>);  <span class="cm">// well within SLA</span>
+});
+</pre></div></div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Conditional wrapping by environment</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> { MongoClient, Collection } <span class="kw">from</span> <span class="str">'mongodb'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">function</span> <span class="fn">getCollection</span>&lt;T&gt;(name: string): Collection&lt;T&gt; {
+  <span class="kw">const</span> col = client.<span class="fn">db</span>(<span class="str">'myapp'</span>).<span class="fn">collection</span>&lt;T&gt;(name);
+  <span class="kw">return</span> process.env.<span class="acc">NODE_ENV</span> === <span class="str">'production'</span>
+    ? col
+    : <span class="fn">withLatencyAll</span>(col, <span class="str">'mongodb'</span>);
+}
+
+<span class="kw">export const</span> <span class="acc">usersCol</span>  = <span class="fn">getCollection</span>&lt;User&gt;(<span class="str">'users'</span>);
+<span class="kw">export const</span> <span class="acc">ordersCol</span> = <span class="fn">getCollection</span>&lt;Order&gt;(<span class="str">'orders'</span>);
+</pre>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Missing index detection</strong> — simulate 250ms p99 to reveal queries that would be fast on small local datasets but slow on large production collections</li>
+        <li><strong>Aggregation pipeline timeout</strong> — complex <code>$lookup</code> and <code>$group</code> stages can be slow; verify your service handles them within budget</li>
+        <li><strong>Write concern latency</strong> — writes with <code>w: "majority"</code> wait for replica acknowledgement; simulate the extra round-trip</li>
+        <li><strong>Change stream lag</strong> — event-driven architectures using change streams need to account for the latency between the write and the stream event</li>
+        <li><strong>Cursor exhaustion</strong> — large <code>find().toArray()</code> calls are expensive; realistic latency exposes code that should use pagination</li>
+        <li><strong>Concurrent session handling</strong> — MongoDB multi-document transactions add latency; verify transaction timeout settings</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed collection wrapper</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> { MongoClient, Collection, ObjectId } <span class="kw">from</span> <span class="str">'mongodb'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">interface</span> <span class="fn">User</span> {
+  _id?: ObjectId;
+  email: string;
+  name: string;
+  createdAt: <span class="fn">Date</span>;
+}
+
+<span class="kw">const</span> users: Collection&lt;User&gt; = client.<span class="fn">db</span>(<span class="str">'myapp'</span>).<span class="fn">collection</span>&lt;User&gt;(<span class="str">'users'</span>);
+
+<span class="cm">// Collection&lt;User&gt; type preserved — full IntelliSense on slowUsers</span>
+<span class="kw">const</span> <span class="acc">slowUsers</span>: Collection&lt;User&gt; = <span class="fn">withLatencyAll</span>(users, <span class="str">'mongodb'</span>);
+
+<span class="cm">// Return type is inferred: Promise&lt;User | null&gt;</span>
+<span class="kw">const</span> found = <span class="kw">await</span> <span class="acc">slowUsers</span>.<span class="fn">findOne</span>({ email: <span class="str">'alice@example.com'</span> });
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.885 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

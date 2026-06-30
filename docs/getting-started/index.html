@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Getting started — slowdep docs</title>
+<meta name="description" content="Install slowdep and wrap your first async function in under a minute.">
+<link rel="canonical" href="https://slowdeps.site/docs/getting-started/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>Getting started</div>
+    <h1 class="page-title">Getting started</h1>
+    <p class="page-desc">Install slowdep and wrap your first async function in under a minute.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Setup</div>
+    <h2 class="section-title">Four steps to realistic latency</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Install</div>
+          <div class="step-body">Add slowdep to your project. Zero dependencies, ships TypeScript types.</div>
+          <div class="codeblock" style="margin-top:0.75rem;"><pre>npm install slowdep</pre></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Import</div>
+          <div class="step-body">Import <code>withLatency</code> using ESM or CommonJS — both work out of the box.</div>
+          <div class="code-tabs" style="margin-top:0.75rem;">
+            <button class="tab active" onclick="switchTab(this,'gs-esm')">ESM</button>
+            <button class="tab" onclick="switchTab(this,'gs-cjs')">CommonJS</button>
+          </div>
+          <div id="gs-esm" class="code-panel active">
+            <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span></pre></div>
+          </div>
+          <div id="gs-cjs" class="code-panel">
+            <div class="code-block"><pre><span class="kw">const</span> { <span class="fn">withLatency</span> } = <span class="fn">require</span>(<span class="str">'slowdep'</span>)</pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Wrap a function with a preset</div>
+          <div class="step-body">Pass your async function and a preset name. The wrapped function has the same signature as the original.</div>
+          <div class="codeblock" style="margin-top:0.75rem;"><pre><span class="cm">// Your original async function</span>
+<span class="kw">async function</span> <span class="fn">queryUser</span>(id) {
+  <span class="kw">return</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id])
+}
+
+<span class="cm">// Wrapped with Postgres-realistic latency</span>
+<span class="kw">const</span> <span class="acc">slowQueryUser</span> = <span class="fn">withLatency</span>(queryUser, <span class="str">'postgres'</span>)</pre></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Use the wrapped function</div>
+          <div class="step-body">Call the wrapped function exactly as you called the original. It returns the same result — just with realistic latency added before execution.</div>
+          <div class="codeblock" style="margin-top:0.75rem;"><pre><span class="cm">// Use exactly like the original</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowQueryUser</span>(<span class="num">42</span>)
+console.<span class="fn">log</span>(user.name) <span class="cm">// same result, realistic timing</span></pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">What just happened?</h2>
+    <p class="section-body">When you call <code>slowQueryUser(42)</code>, slowdep samples a latency value from a lognormal distribution parameterized by the <code>'postgres'</code> preset (p50: 5ms, p99: 200ms). It waits that many milliseconds, then calls your original <code>queryUser(42)</code> function and returns its result.</p>
+    <p class="section-body">The lognormal distribution is key. Unlike a flat <code>setTimeout</code>, it produces realistic variance: most calls are fast (near 5ms), some take longer (20–50ms), and occasionally one takes 100–200ms. That long tail is where timeout misconfiguration and missing retry logic hide.</p>
+    <p class="section-body">If the preset's <code>errorRate</code> fires (postgres: 0.1% of calls), the wrapper rejects with a transient error before calling your function — giving your retry and fallback code something real to handle.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">Production tip</div>
+      <p>Only wrap in development and test environments. Use <code>process.env.NODE_ENV !== 'production' ? withLatency(fn, preset) : fn</code> to ensure zero overhead in production. See <a href="/docs/production-usage/">Production usage</a> for the full pattern.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Next steps</div>
+    <h2 class="section-title">Where to go from here</h2>
+
+    <div class="card-grid">
+      <a href="/docs/concepts/" class="card">
+        <div class="card-label">concepts</div>
+        <div class="card-title">Core concepts</div>
+        <div class="card-body">Why lognormal latency matters and how slowdep models real-world dependency behavior.</div>
+      </a>
+      <a href="/docs/presets/" class="card">
+        <div class="card-label">reference</div>
+        <div class="card-title">Built-in presets</div>
+        <div class="card-body">All 10 presets with their p50/p99 values and the services they model.</div>
+      </a>
+      <a href="/docs/withLatency/" class="card">
+        <div class="card-label">API</div>
+        <div class="card-title">withLatency</div>
+        <div class="card-body">Full API reference for wrapping a single async function.</div>
+      </a>
+      <a href="/docs/withLatencyAll/" class="card">
+        <div class="card-label">API</div>
+        <div class="card-title">withLatencyAll</div>
+        <div class="card-body">Wrap every async method on a client object at once.</div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+
+<script>
+function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+</script>
+</body>
+</html>

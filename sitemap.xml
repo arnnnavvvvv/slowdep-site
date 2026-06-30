@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://slowdeps.site/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://slowdeps.site/faq/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/glossary/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://slowdeps.site/troubleshooting/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- docs -->
+  <url><loc>https://slowdeps.site/docs/getting-started/</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://slowdeps.site/docs/concepts/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/docs/presets/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/docs/withLatency/</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://slowdeps.site/docs/withLatencyAll/</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://slowdeps.site/docs/api-reference/</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://slowdeps.site/docs/deterministic-testing/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/docs/best-practices/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/docs/production-usage/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- guides -->
+  <url><loc>https://slowdeps.site/guides/why-not-settimeout/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/guides/testing-retries/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/guides/testing-timeouts/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/guides/testing-circuit-breakers/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/guides/ai-applications/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/guides/ci-testing/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- integrations -->
+  <url><loc>https://slowdeps.site/integrations/postgres/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/integrations/redis/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/integrations/mongodb/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/integrations/prisma/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/integrations/openai/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/integrations/anthropic/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/integrations/stripe/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/integrations/aws-s3/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/integrations/nextjs/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/integrations/fetch/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- comparisons -->
+  <url><loc>https://slowdeps.site/comparisons/settimeout-vs-slowdep/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slowdeps.site/comparisons/toxiproxy-vs-slowdep/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/comparisons/msw-vs-slowdep/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/comparisons/jest-mocks-vs-slowdep/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/comparisons/chaos-engineering-vs-slowdep/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- learn -->
+  <url><loc>https://slowdeps.site/learn/lognormal-distribution/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/learn/tail-latency/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/learn/p99-latency/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/learn/retries-and-backoff/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slowdeps.site/learn/circuit-breakers/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+</urlset>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retries and exponential backoff — slowdep learn</title>
+<meta name="description" content="How to implement retry logic correctly, why naive retries cause thundering herd problems, and how to test backoff strategies with slowdep.">
+<link rel="canonical" href="https://slowdeps.site/learn/retries-and-backoff/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Learn<span>/</span>Retries and backoff</div>
+    <h1 class="page-title">Retries and exponential backoff</h1>
+    <p class="page-desc">How to implement retry logic correctly, why naive immediate retries cause thundering herd problems, and how to test your backoff strategy with slowdep.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">when to retry</div>
+    <h2 class="section-title">Retryable vs non-retryable errors</h2>
+    <p class="section-body">Not every error should be retried. Retrying a non-idempotent operation on failure can cause duplicates — double charges, duplicate records, sent emails sent twice.</p>
+    <table class="cmp-table" style="margin-top:1.25rem;">
+      <tr><th>error type</th><th>retry?</th><th>examples</th></tr>
+      <tr><td>Transient network error</td><td><span class="yes">yes</span></td><td>ECONNRESET, ETIMEDOUT, socket hang up</td></tr>
+      <tr><td>503 Service Unavailable</td><td><span class="yes">yes</span></td><td>Server overloaded, temporarily down</td></tr>
+      <tr><td>429 Too Many Requests</td><td><span class="yes">yes</span></td><td>Rate limited — retry after Retry-After header</td></tr>
+      <tr><td>500 Internal Server Error</td><td><span class="partial">sometimes</span></td><td>Only if the operation is idempotent</td></tr>
+      <tr><td>400 Bad Request</td><td><span class="no">no</span></td><td>The request itself is wrong; retrying won't help</td></tr>
+      <tr><td>401 / 403</td><td><span class="no">no</span></td><td>Auth error; retrying without fixing auth will fail again</td></tr>
+      <tr><td>404 Not Found</td><td><span class="no">no</span></td><td>The resource doesn't exist</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">the wrong way</div>
+    <h2 class="section-title">Why naive retries make things worse</h2>
+    <p class="section-body">Retrying immediately at a fixed interval — the naive approach — causes the thundering herd problem. When a service goes down, all clients fail at the same moment, then all retry at the same moment, creating a synchronized burst that overwhelms the recovering service.</p>
+    <div class="codeblock"><pre><span class="cm">// Bad: immediate retry, fixed interval</span>
+<span class="kw">async function</span> <span class="fn">fetchWithBadRetry</span>(url) {
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < <span class="num">3</span>; i++) {
+    <span class="kw">try</span> { <span class="kw">return await</span> <span class="fn">fetch</span>(url); }
+    <span class="kw">catch</span> { <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">1000</span>); } <span class="cm">// every client waits 1s, then all hit at once</span>
+  }
+  <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'max retries exceeded'</span>);
+}</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">exponential backoff</div>
+    <h2 class="section-title">Backoff with full jitter</h2>
+    <p class="section-body">Exponential backoff doubles the delay on each attempt, spreading retries out in time. Adding random jitter prevents clients from synchronizing even if they failed at the same moment.</p>
+    <div class="codeblock"><pre><span class="cm">// Good: exponential backoff with full jitter</span>
+<span class="kw">async function</span> <span class="fn">fetchWithRetry</span>(url, { maxAttempts = <span class="num">3</span>, baseMs = <span class="num">100</span> } = {}) {
+  <span class="kw">for</span> (<span class="kw">let</span> attempt = <span class="num">0</span>; attempt < maxAttempts; attempt++) {
+    <span class="kw">try</span> {
+      <span class="kw">return await</span> <span class="fn">fetch</span>(url);
+    } <span class="kw">catch</span> (err) {
+      <span class="kw">if</span> (attempt === maxAttempts - <span class="num">1</span>) <span class="kw">throw</span> err;
+      <span class="cm">// Full jitter: random value in [0, base * 2^attempt]</span>
+      <span class="kw">const</span> cap   = baseMs * Math.<span class="fn">pow</span>(<span class="num">2</span>, attempt);
+      <span class="kw">const</span> delay = Math.<span class="fn">random</span>() * cap;
+      <span class="kw">await</span> <span class="fn">sleep</span>(delay);
+    }
+  }
+}
+
+<span class="cm">// attempt 0: delay in [0, 100ms]</span>
+<span class="cm">// attempt 1: delay in [0, 200ms]</span>
+<span class="cm">// attempt 2: delay in [0, 400ms]</span></pre></div>
+
+    <table class="cmp-table" style="margin-top:1.5rem;">
+      <tr><th>strategy</th><th>thundering herd</th><th>mean wait</th><th>recommendation</th></tr>
+      <tr><td>No backoff</td><td><span class="no">severe</span></td><td>0ms</td><td>Never use</td></tr>
+      <tr><td>Fixed backoff</td><td><span class="no">synchronized</span></td><td>base</td><td>Avoid for shared services</td></tr>
+      <tr><td>Exponential (no jitter)</td><td><span class="partial">still synchronized</span></td><td>base * 2^n</td><td>Better but not enough</td></tr>
+      <tr><td>Full jitter</td><td><span class="yes">eliminated</span></td><td>base * 2^(n-1)</td><td>Recommended</td></tr>
+      <tr><td>Decorrelated jitter</td><td><span class="yes">eliminated</span></td><td>slightly higher</td><td>Good alternative</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">testing with slowdep</div>
+    <h2 class="section-title">Testing retry logic with realistic failures</h2>
+    <p class="section-body">slowdep's <code>errorRate</code> option makes it easy to trigger failures reliably in tests, without fragile mocking.</p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// 50% error rate — reliably exercises retry logic</span>
+<span class="kw">const</span> <span class="acc">unreliableFetch</span> = <span class="fn">withLatency</span>(fetch, {
+  p50: <span class="num">80</span>,
+  p99: <span class="num">1000</span>,
+  errorRate: <span class="num">0.5</span>,
+});
+
+<span class="fn">test</span>(<span class="str">'retries up to 3 times before giving up'</span>, <span class="kw">async</span> () => {
+  <span class="kw">let</span> callCount = <span class="num">0</span>;
+  <span class="kw">const</span> trackedFetch = <span class="kw">async</span> (...args) => {
+    callCount++;
+    <span class="kw">return</span> <span class="acc">unreliableFetch</span>(...args);
+  };
+
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    <span class="fn">fetchWithRetry</span>(<span class="str">'https://api.example.com'</span>, { maxAttempts: <span class="num">3</span> })
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>();
+
+  <span class="fn">expect</span>(callCount).<span class="fn">toBeLessThanOrEqual</span>(<span class="num">3</span>);
+});</pre></div>
+    <div class="callout tip">
+      <div class="callout-title">Always-fail mode</div>
+      <p>Set <code>errorRate: 1.0</code> to make every call fail. This tests your max-retry limit and deadline enforcement without relying on probability.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">further reading</div>
+    <h2 class="section-title">Related topics</h2>
+    <div class="card-grid">
+      <a href="/learn/circuit-breakers/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">Circuit breakers</div>
+        <div class="card-body">Stop retrying entirely when a dependency is consistently failing.</div>
+      </a>
+      <a href="/guides/testing-retries/" class="card">
+        <div class="card-label">Guide</div>
+        <div class="card-title">Testing retry logic</div>
+        <div class="card-body">Complete guide with Jest examples for testing backoff strategies.</div>
+      </a>
+      <a href="/learn/tail-latency/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">Tail latency</div>
+        <div class="card-body">How slow outliers and fan-out amplification make retries necessary.</div>
+      </a>
+      <a href="/docs/concepts/" class="card">
+        <div class="card-label">Docs</div>
+        <div class="card-title">Core concepts</div>
+        <div class="card-body">How slowdep's error injection works and when to use it.</div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

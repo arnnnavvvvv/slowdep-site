@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glossary — slowdep</title>
+<meta name="description" content="Definitions for the latency and resilience terms used throughout this documentation.">
+<link rel="canonical" href="https://slowdeps.site/glossary/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link active">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Glossary</div>
+    <h1 class="page-title">Glossary</h1>
+    <p class="page-desc">Definitions for the latency and resilience terms used throughout this documentation.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Latency</div>
+    <h2 class="section-title">Latency terms</h2>
+
+    <div class="glossary-item">
+      <div class="glossary-term">latency</div>
+      <div class="glossary-def">The time elapsed from when a request is initiated to when a response is received. In the context of software dependencies, latency includes network round-trip time, server processing time, and any queuing delay. Usually measured in milliseconds.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">tail latency</div>
+      <div class="glossary-def">The latency experienced by requests in the slow end of the distribution — typically the 95th, 99th, or 99.9th percentile. Tail latency is disproportionately important because in a system that makes many parallel requests, the overall response time is bounded by the slowest one. Systems that look fast at p50 can still have serious problems hiding in the tail.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">p50 (median)</div>
+      <div class="glossary-def">The 50th percentile latency. Half of all requests complete faster than this value, and half complete slower. The median is a better measure of typical latency than the mean because it is not skewed by rare very-slow outliers. slowdep uses p50 as one of the two parameters for its lognormal model.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">p95</div>
+      <div class="glossary-def">The 95th percentile latency. 95% of requests complete faster than this value; 5% are slower. A useful signal for "what does a somewhat unlucky user experience?" Production SLOs often target p95 as a balance between coverage and the noisiness of very high percentiles.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">p99</div>
+      <div class="glossary-def">The 99th percentile latency. 99% of requests complete faster than this value; 1 in 100 is slower. p99 is the standard "danger zone" benchmark. If your timeout is shorter than the p99 latency of a dependency, 1% of calls will time out. slowdep uses p99 as its second parameter, alongside p50, to fit the lognormal distribution.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">p999</div>
+      <div class="glossary-def">The 99.9th percentile latency — one in a thousand requests falls at or above this value. At high traffic volumes, p999 outliers become common in absolute terms. For example, at 10,000 requests per second, roughly 10 requests per second hit the p999 latency. slowdep caps sampled latency at p99 × 3 as a practical approximation of this tail.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">jitter</div>
+      <div class="glossary-def">Random variation in latency from call to call. A service with low jitter responds in a consistent, predictable time. A service with high jitter has widely varying response times even under stable load. Real network services always have some jitter. slowdep's lognormal distribution naturally produces jitter — no two calls take exactly the same amount of time.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">lognormal distribution</div>
+      <div class="glossary-def">A probability distribution where the logarithm of the variable is normally distributed. Latency in real systems follows a lognormal shape: most values cluster near the median, the distribution is right-skewed (there's a floor near zero but no ceiling), and there's a long tail of occasional slow outliers. slowdep samples from a lognormal distribution parameterized by p50 and p99 to produce realistic latency values.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">Box-Muller transform</div>
+      <div class="glossary-def">A mathematical technique for generating pairs of independent, standard normally-distributed random numbers from pairs of uniform random numbers. slowdep uses the Box-Muller transform internally to sample from the lognormal distribution. Given two uniform random values u1 and u2, it computes a normal sample as <code>sqrt(-2 * ln(u1)) * cos(2p * u2)</code>, then exponentiates it to get the final latency.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">warm cache</div>
+      <div class="glossary-def">A cache that already contains the data being requested, allowing the request to be served without a round trip to the underlying store. Warm-cache latency is typically much lower than cold-cache or cache-miss latency. The redis preset in slowdep (p50: 1ms, p99: 20ms) approximates a warm in-process or network cache.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">cold start</div>
+      <div class="glossary-def">The elevated latency experienced by the first request after a service, connection, or cache starts up — before JIT compilation, connection pooling, or caching have warmed up. Cold starts can be orders of magnitude slower than steady-state latency and are a common source of timeout failures in serverless and containerized environments.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Resilience</div>
+    <h2 class="section-title">Resilience terms</h2>
+
+    <div class="glossary-item">
+      <div class="glossary-term">retry</div>
+      <div class="glossary-def">Automatically re-attempting a failed request. Retries are a primary defense against transient errors — short-lived failures that succeed if tried again a moment later. slowdep's <code>errorRate</code> option injects transient errors that retries should recover from, allowing you to test your retry logic under realistic conditions.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">exponential backoff</div>
+      <div class="glossary-def">A retry strategy where the wait time between retries grows exponentially with each attempt — e.g., 100ms, 200ms, 400ms, 800ms. Exponential backoff prevents retry storms where many clients hammer a struggling service simultaneously. Usually combined with jitter (see below) to spread retry load across time.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">jitter (backoff)</div>
+      <div class="glossary-def">In the context of retry backoff, jitter means adding randomness to the wait time between retries. Without jitter, all clients that failed at the same time retry at the same time, creating a thundering-herd problem. With jitter, retries are spread across a time window, reducing the load spike on the recovering service. This is distinct from latency jitter but shares the same root concept: randomness reduces coordination.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">circuit breaker</div>
+      <div class="glossary-def">A resilience pattern that stops sending requests to a dependency after a threshold of failures, instead immediately returning an error or fallback response. After a recovery timeout, the circuit allows a probe request through. If it succeeds, the circuit closes and normal traffic resumes. Circuit breakers prevent cascade failures caused by a slow or failed downstream service from consuming all threads or connections in the calling service.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">timeout</div>
+      <div class="glossary-def">A maximum duration a caller is willing to wait for a response. If the dependency does not respond within the timeout, the call fails with a timeout error. Setting timeouts correctly requires knowing the p99 latency of the dependency. If the timeout is shorter than p99, about 1% of calls will time out even under normal conditions.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">deadline</div>
+      <div class="glossary-def">A point in time (as opposed to a duration) by which a request must complete. Deadlines propagate through a call chain — a 500ms deadline set at the API gateway applies to the entire chain of service calls, including database queries. If 200ms is spent in application logic before calling a database, the database has at most 300ms. Deadline-aware systems cancel in-flight requests when the deadline passes.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">bulkhead</div>
+      <div class="glossary-def">A resilience pattern that isolates resources (connection pools, thread pools, queues) so that a failure in one dependency cannot exhaust the resources of the entire system. Named after the watertight compartments in ship hulls. In practice: give each downstream dependency its own connection pool with a cap, so a slow database cannot consume all connections and block requests to unrelated services.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">fault injection</div>
+      <div class="glossary-def">Deliberately introducing errors, latency, or resource exhaustion into a system to test how it responds. slowdep's <code>errorRate</code> option is a form of fault injection — it causes a fraction of calls to fail with a transient error, surfacing gaps in error handling and retry logic before they appear in production.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">chaos engineering</div>
+      <div class="glossary-def">The practice of intentionally introducing failures into a system — in staging or production — to verify that it remains resilient. Pioneered at Netflix with the Chaos Monkey tool. slowdep is a lightweight, code-level form of chaos engineering targeted at individual dependency interactions during development and testing, not full production chaos experiments.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term">resilience testing</div>
+      <div class="glossary-def">Testing a system's ability to withstand and recover from adverse conditions: latency spikes, transient errors, dependency failures, and resource exhaustion. slowdep enables resilience testing at the unit and integration test level by making dependency latency and errors controllable and reproducible, without requiring a real infrastructure fault to occur.</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

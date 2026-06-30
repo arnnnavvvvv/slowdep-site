@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troubleshooting — slowdep</title>
+<meta name="description" content="Solutions to common issues encountered when using slowdep.">
+<link rel="canonical" href="https://slowdeps.site/troubleshooting/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link active">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Troubleshooting</div>
+    <h1 class="page-title">Troubleshooting</h1>
+    <p class="page-desc">Solutions to common issues encountered when using slowdep.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Most common issue</div>
+    <h2 class="section-title">Latency not applied</h2>
+    <p class="section-body">The most common issue: the original, unwrapped function is still being called instead of the wrapped version. <code>withLatency</code> returns a new function — you must call that new function.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">Wrong</div>
+      <p>Wrapping the function but continuing to call the original.</p>
+    </div>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="cm">// This wraps queryUser but the wrapped version is never used</span>
+<span class="fn">withLatency</span>(queryUser, <span class="str">'postgres'</span>)
+
+<span class="cm">// Still calling the original — no latency applied</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">queryUser</span>(id)</pre></div>
+
+    <div class="callout tip">
+      <div class="callout-title">Correct</div>
+      <p>Assign the return value of <code>withLatency</code> and call that.</p>
+    </div>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="cm">// Assign the wrapped function</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(queryUser, <span class="str">'postgres'</span>)
+
+<span class="cm">// Call the wrapped version</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowQuery</span>(id)</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Class methods</div>
+    <h2 class="section-title">Lost <code>this</code> context</h2>
+    <p class="section-body">When wrapping a class method, the wrapped function may lose its <code>this</code> binding. This happens because extracting a method from a class instance severs the connection to the instance. Use <code>.bind()</code> or an arrow function wrapper.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">Wrong</div>
+      <p>Extracting an unbound method loses <code>this</code>.</p>
+    </div>
+    <div class="codeblock"><pre><span class="kw">class</span> <span class="fn">UserService</span> {
+  <span class="kw">async</span> <span class="fn">getUser</span>(id) {
+    <span class="kw">return</span> <span class="kw">this</span>.db.<span class="fn">query</span>(<span class="str">`SELECT * FROM users WHERE id = $1`</span>, [id])
+  }
+}
+
+<span class="kw">const</span> svc = <span class="kw">new</span> <span class="fn">UserService</span>()
+<span class="cm">// this.db will be undefined inside the wrapped call</span>
+<span class="kw">const</span> <span class="acc">slowGetUser</span> = <span class="fn">withLatency</span>(svc.getUser, <span class="str">'postgres'</span>)</pre></div>
+
+    <div class="callout tip">
+      <div class="callout-title">Correct — use .bind()</div>
+      <p>Bind the method to the instance before wrapping.</p>
+    </div>
+    <div class="codeblock"><pre><span class="kw">const</span> <span class="acc">slowGetUser</span> = <span class="fn">withLatency</span>(svc.getUser.<span class="fn">bind</span>(svc), <span class="str">'postgres'</span>)
+
+<span class="cm">// Or use an arrow function wrapper</span>
+<span class="kw">const</span> <span class="acc">slowGetUser</span> = <span class="fn">withLatency</span>(
+  (id) => svc.<span class="fn">getUser</span>(id),
+  <span class="str">'postgres'</span>
+)</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;"><code>withLatencyAll</code> handles <code>this</code> binding automatically when wrapping an entire object, so you only need to think about this when using <code>withLatency</code> on individual extracted methods.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Error handling</div>
+    <h2 class="section-title">Wrapped function errors</h2>
+    <p class="section-body">When <code>errorRate</code> fires, the wrapped function rejects with a plain <code>Error</code>. The message is <code>"Simulated transient error"</code>. The underlying function is never called in this case. Your error handling code needs to handle this rejection exactly as it would handle a real transient error.</p>
+
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">const</span> <span class="acc">slowCharge</span> = <span class="fn">withLatency</span>(stripe.charges.<span class="fn">create</span>.<span class="fn">bind</span>(stripe.charges), {
+  p50: <span class="num">200</span>, p99: <span class="num">2000</span>, errorRate: <span class="num">0.002</span>
+})
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> charge = <span class="kw">await</span> <span class="acc">slowCharge</span>({ amount: <span class="num">1000</span>, currency: <span class="str">'usd'</span> })
+  <span class="fn">processCharge</span>(charge)
+} <span class="kw">catch</span> (err) {
+  <span class="cm">// err.message === 'Simulated transient error' when errorRate fires</span>
+  <span class="cm">// Handle exactly as you would a real Stripe network error</span>
+  <span class="kw">if</span> (err.message === <span class="str">'Simulated transient error'</span> || err.type === <span class="str">'StripeConnectionError'</span>) {
+    <span class="kw">await</span> <span class="fn">retry</span>(() => <span class="acc">slowCharge</span>({ amount: <span class="num">1000</span>, currency: <span class="str">'usd'</span> }))
+  }
+}</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">TypeScript issues</h2>
+    <p class="section-body"><code>withLatency</code> preserves the original function's complete type signature using generics. The return type of the wrapped function is identical to the original. If TypeScript is reporting type errors with slowdep, check the following:</p>
+
+    <div class="prose" style="margin-top:1rem;">
+      <ul>
+        <li><strong>TypeScript version:</strong> slowdep requires TypeScript 4.5 or later for the generic inference to work correctly. Run <code>tsc --version</code> to check.</li>
+        <li><strong>Strict mode:</strong> If <code>"strict": true</code> is set, make sure your wrapped functions have explicit return types or that TypeScript can infer them.</li>
+        <li><strong>Explicit type parameter:</strong> If inference fails, provide the type parameter explicitly: <code>withLatency&lt;typeof myFn&gt;(myFn, 'redis')</code></li>
+        <li><strong>Importing types:</strong> Use <code>import type { LatencyOptions, LatencyPreset } from 'slowdep'</code> for type-only imports to avoid importing runtime code in type-checking contexts.</li>
+      </ul>
+    </div>
+
+    <div class="codeblock" style="margin-top:1rem;"><pre><span class="cm">// Explicit typing when inference is ambiguous</span>
+<span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+<span class="kw">import</span> <span class="kw">type</span> { <span class="acc">LatencyOptions</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">const</span> opts: <span class="acc">LatencyOptions</span> = { p50: <span class="num">5</span>, p99: <span class="num">200</span>, errorRate: <span class="num">0.001</span> }
+<span class="kw">const</span> <span class="acc">slowFn</span> = <span class="fn">withLatency</span>&lt;<span class="kw">typeof</span> myAsyncFn&gt;(myAsyncFn, opts)</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Module format</div>
+    <h2 class="section-title">ESM vs CommonJS</h2>
+    <p class="section-body">slowdep ships both ESM and CommonJS builds. The correct build is selected automatically based on your project's module format. If you see an error like <em>"does not provide an export named 'withLatency'"</em>, the wrong build is being loaded.</p>
+
+    <div class="prose" style="margin-top:1rem;">
+      <ul>
+        <li><strong>Check your package.json:</strong> If <code>"type": "module"</code> is set, Node.js treats <code>.js</code> files as ESM. If it's absent or <code>"commonjs"</code>, they're treated as CJS.</li>
+        <li><strong>Use the right import syntax:</strong> ESM uses <code>import { withLatency } from 'slowdep'</code>. CJS uses <code>const { withLatency } = require('slowdep')</code>.</li>
+        <li><strong>Mixed projects:</strong> If you have a CJS project but want to use ESM imports, rename files to <code>.mjs</code> or set <code>"type": "module"</code>. Do not mix <code>require</code> and <code>import</code> in the same file.</li>
+        <li><strong>Bundlers:</strong> webpack, Rollup, Vite, and esbuild all handle the exports map automatically. No special configuration is needed.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Tests</div>
+    <h2 class="section-title">Deterministic tests</h2>
+    <p class="section-body">slowdep uses <code>Math.random()</code> internally. Tests that measure timing or depend on consistent latency values will be flaky unless you mock it. Use <code>jest.spyOn</code> to control the random source:</p>
+
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">let</span> randomSpy
+
+beforeEach(() => {
+  <span class="cm">// Lock Math.random so lognormal sampling is deterministic</span>
+  randomSpy = jest.<span class="fn">spyOn</span>(Math, <span class="str">'random'</span>).<span class="fn">mockReturnValue</span>(<span class="num">0.5</span>)
+})
+
+afterEach(() => {
+  randomSpy.<span class="fn">mockRestore</span>()
+})
+
+test(<span class="str">'returns user data'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(mockQueryUser, <span class="str">'postgres'</span>)
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowQuery</span>(<span class="num">1</span>)
+  <span class="cm">// Latency is now consistent — test will not be flaky</span>
+  expect(user.id).<span class="fn">toBe</span>(<span class="num">1</span>)
+})</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">See <a href="/docs/deterministic-testing/" style="color:var(--blue)">Deterministic testing</a> for two additional approaches: mocking the whole wrapper and using an environment variable bypass.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Common mistakes</div>
+    <h2 class="section-title">Common mistakes</h2>
+
+    <div class="callout warn">
+      <div class="callout-title">Mistake — wrapping a Promise instead of a function</div>
+      <p>Calling the function before passing it to <code>withLatency</code> gives you a Promise, not a function. <code>withLatency</code> expects a function.</p>
+    </div>
+    <div class="codeblock"><pre><span class="cm">// Wrong: queryUser() is called immediately, returns a Promise</span>
+<span class="kw">const</span> <span class="acc">slow</span> = <span class="fn">withLatency</span>(<span class="fn">queryUser</span>(<span class="num">1</span>), <span class="str">'postgres'</span>)
+
+<span class="cm">// Correct: pass the function reference, not a call to it</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(queryUser, <span class="str">'postgres'</span>)
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="acc">slowQuery</span>(<span class="num">1</span>)</pre></div>
+
+    <div class="callout" style="margin-top:1.5rem;">
+      <div class="callout-title">Note — wrapping synchronous functions</div>
+      <p>slowdep can wrap synchronous functions, but the added delay is still async — the result will be a Promise even if the original function returned a plain value. This is usually not what you want. Prefer wrapping async functions that already return Promises.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

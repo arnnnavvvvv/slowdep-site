@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>p99 latency — slowdep learn</title>
+<meta name="description" content="What p99 latency means, how to find it in your APM data, and how to use it to configure realistic slowdep latency profiles.">
+<link rel="canonical" href="https://slowdeps.site/learn/p99-latency/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Learn<span>/</span>p99 latency</div>
+    <h1 class="page-title">p99 latency</h1>
+    <p class="page-desc">What p99 means, how to read it from your APM tools, and how to use it to configure a realistic slowdep profile for your specific service.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">definition</div>
+    <h2 class="section-title">What p99 means</h2>
+    <p class="section-body">p99 is the 99th percentile of a latency distribution. It means: 99% of requests complete faster than this value, and 1% take longer. It is sometimes written as the "99th percentile latency" or "99p".</p>
+    <p class="section-body" style="margin-top:0.6rem;">At 100 requests per second, p99 latency affects roughly 1 request per second. At 1,000 req/s, 10 requests per second hit or exceed the p99 threshold. These are not rare events — they're a continuous stream.</p>
+
+    <table class="param-table" style="margin-top:1.5rem;">
+      <tr><th>percentile</th><th>meaning</th><th>at 1,000 req/s</th></tr>
+      <tr><td class="param-name">p50</td><td class="param-desc">Median — half of requests are slower, half faster</td><td class="param-desc">500 req/s exceed this</td></tr>
+      <tr><td class="param-name">p95</td><td class="param-desc">95th percentile — 5% of requests are slower</td><td class="param-desc">50 req/s exceed this</td></tr>
+      <tr><td class="param-name">p99</td><td class="param-desc">99th percentile — 1% of requests are slower</td><td class="param-desc">10 req/s exceed this</td></tr>
+      <tr><td class="param-name">p999</td><td class="param-desc">99.9th percentile — 0.1% of requests are slower</td><td class="param-desc">1 req/s exceeds this</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">finding your p99</div>
+    <h2 class="section-title">Where to look in your APM tools</h2>
+    <p class="section-body">Most observability tools expose percentile latency. Here's where to find it in the common ones:</p>
+
+    <div class="codeblock"><pre><span class="cm"># Prometheus / Grafana — histogram_quantile</span>
+histogram_quantile(<span class="num">0.99</span>, rate(http_request_duration_seconds_bucket[<span class="num">5</span>m]))
+
+<span class="cm"># Datadog — p99 latency metric</span>
+avg:trace.express.request.duration.by.resource_name{*}.as_rate().rollup(p99, <span class="num">60</span>)
+
+<span class="cm"># CloudWatch — ExtendedStatistics</span>
+{
+  <span class="str">"ExtendedStatistics"</span>: [<span class="str">"p99"</span>],
+  <span class="str">"MetricName"</span>: <span class="str">"Duration"</span>
+}
+
+<span class="cm"># New Relic NRQL</span>
+SELECT percentile(duration, <span class="num">99</span>) FROM Transaction WHERE appName = <span class="str">'myapp'</span></pre></div>
+
+    <div class="callout tip">
+      <div class="callout-title">No APM? Use the presets</div>
+      <p>If you don't have real latency data yet, slowdep's built-in presets are calibrated from production observations for common services like <code>'postgres'</code>, <code>'redis'</code>, <code>'openai'</code>, and <code>'stripe'</code>. Start there and refine when you have data.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">using in slowdep</div>
+    <h2 class="section-title">Configuring a custom profile from your data</h2>
+    <p class="section-body">Once you have your p50 and p99 from APM, plug them directly into slowdep's custom profile:</p>
+    <div class="codeblock"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// Your APM shows: p50 = 12ms, p99 = 340ms, error rate ~0.3%</span>
+<span class="kw">const</span> <span class="acc">slowQuery</span> = <span class="fn">withLatency</span>(db.query, {
+  p50: <span class="num">12</span>,
+  p99: <span class="num">340</span>,
+  errorRate: <span class="num">0.003</span>,
+});
+
+<span class="cm">// Now your tests reflect actual production behaviour</span>
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="acc">slowQuery</span>(<span class="str">'SELECT ...'</span>);</pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">timeout calibration</div>
+    <h2 class="section-title">Why p99 determines your safe timeout value</h2>
+    <p class="section-body">Your request timeout must be larger than your p99, or you'll start rejecting legitimate requests. The usual rule of thumb is to set your timeout at roughly p999 — covering 99.9% of real responses while cutting off true hangs.</p>
+    <div class="codeblock"><pre><span class="cm">// Service: p50=5ms, p99=200ms, p999=2000ms</span>
+
+<span class="cm">// Timeout too tight — rejects 1% of real requests</span>
+<span class="kw">const</span> TIMEOUT = <span class="num">150</span>;  <span class="cm">// below p99, will fire on valid responses</span>
+
+<span class="cm">// Timeout correct — only catches true hangs</span>
+<span class="kw">const</span> TIMEOUT = <span class="num">2000</span>; <span class="cm">// at p999, covers 99.9% of legitimate responses</span>
+
+<span class="cm">// Test the timeout fires when expected:</span>
+<span class="cm">// mock Math.random to force a high-percentile sample</span>
+jest.<span class="fn">spyOn</span>(Math, <span class="str">'random'</span>).<span class="fn">mockReturnValue</span>(<span class="num">0.999</span>); <span class="cm">// forces near-p99 sample</span></pre></div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">further reading</div>
+    <h2 class="section-title">Related topics</h2>
+    <div class="card-grid">
+      <a href="/learn/tail-latency/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">Tail latency</div>
+        <div class="card-body">Why slow outliers amplify across fan-out calls and affect most users.</div>
+      </a>
+      <a href="/learn/lognormal-distribution/" class="card">
+        <div class="card-label">Learn</div>
+        <div class="card-title">Lognormal distribution</div>
+        <div class="card-body">How slowdep turns p50 + p99 into a full latency distribution.</div>
+      </a>
+      <a href="/docs/presets/" class="card">
+        <div class="card-label">Docs</div>
+        <div class="card-title">Built-in presets</div>
+        <div class="card-body">Ready-made p50/p99 values for common services if you don't have APM data.</div>
+      </a>
+      <a href="/guides/testing-timeouts/" class="card">
+        <div class="card-label">Guide</div>
+        <div class="card-title">Testing timeouts</div>
+        <div class="card-body">Verify your timeout logic fires at the right threshold.</div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

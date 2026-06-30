@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toxiproxy vs slowdep — comparison</title>
+<meta name="description" content="Toxiproxy is a network-layer proxy for chaos testing. slowdep is a function wrapper. Different tools for different jobs.">
+<link rel="canonical" href="https://slowdeps.site/comparisons/toxiproxy-vs-slowdep/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/settimeout-vs-slowdep/" class="nav-link active">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Comparisons<span>/</span>Toxiproxy vs slowdep</div>
+    <h1 class="page-title">Toxiproxy vs slowdep</h1>
+    <p class="page-desc">Toxiproxy is a network-layer proxy for chaos testing. slowdep is a function wrapper. Different tools for different jobs.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section">
+    <div class="section-eyebrow">Overview</div>
+    <h2 class="section-title">What each tool is</h2>
+    <p class="section-body">
+      <strong style="color:var(--text)">Toxiproxy</strong> is a TCP proxy that sits between your application and a real or test service.
+      It intercepts network connections and injects faults: latency, bandwidth limits, connection resets, timeouts.
+      It's language-agnostic and requires running a separate process (or Docker container).
+    </p>
+    <p class="section-body">
+      <strong style="color:var(--text)">slowdep</strong> is an npm package that wraps async JavaScript/TypeScript functions directly.
+      No proxy, no Docker, no separate process. You import it, wrap a function, and it adds lognormal latency.
+      It runs entirely in your Node.js test process.
+    </p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Feature comparison</div>
+    <h2 class="section-title">Comparison table</h2>
+    <table class="cmp-table">
+      <tr><th>feature</th><th>toxiproxy</th><th>slowdep</th></tr>
+      <tr>
+        <td>scope</td>
+        <td>network layer — all TCP traffic</td>
+        <td>function level — per-function control</td>
+      </tr>
+      <tr>
+        <td>setup complexity</td>
+        <td><span class="no">high — separate binary or Docker service</span></td>
+        <td><span class="yes">low — npm install, one import</span></td>
+      </tr>
+      <tr>
+        <td>language support</td>
+        <td><span class="yes">any — language-agnostic</span></td>
+        <td><span class="partial">Node.js / TypeScript only</span></td>
+      </tr>
+      <tr>
+        <td>CI overhead</td>
+        <td><span class="no">high — needs Docker or binary in CI</span></td>
+        <td><span class="yes">zero — pure npm dependency</span></td>
+      </tr>
+      <tr>
+        <td>Docker required</td>
+        <td><span class="partial">recommended</span></td>
+        <td><span class="yes">never</span></td>
+      </tr>
+      <tr>
+        <td>production-safe</td>
+        <td><span class="no">no — only for test environments</span></td>
+        <td><span class="yes">yes — wrapping is safe, just slow</span></td>
+      </tr>
+      <tr>
+        <td>test determinism</td>
+        <td><span class="partial">configurable latency, but fixed</span></td>
+        <td><span class="yes">probabilistic (lognormal); seed Math.random for determinism</span></td>
+      </tr>
+      <tr>
+        <td>granularity</td>
+        <td>per-connection — affects all calls to a host:port</td>
+        <td>per-function — different latency per method</td>
+      </tr>
+      <tr>
+        <td>latency distribution</td>
+        <td><span class="partial">fixed, jitter, or random within range</span></td>
+        <td><span class="yes">lognormal — matches real production distributions</span></td>
+      </tr>
+      <tr>
+        <td>streaming support</td>
+        <td><span class="yes">can simulate slow streams byte-by-byte</span></td>
+        <td><span class="partial">delays the function call start, not stream chunks</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">When to use</div>
+    <h2 class="section-title">When to use Toxiproxy</h2>
+    <p class="section-body">
+      Toxiproxy excels when you need to test network-level behavior that a function wrapper can't model:
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Testing network-level failure modes</div>
+          <div class="step-body">Connection resets mid-stream, bandwidth throttling, partial writes, TCP RST injection. These are network events that happen below the function call level and can't be simulated by wrapping.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Multi-service Docker environments</div>
+          <div class="step-body">When your tests run against real services in Docker Compose, Toxiproxy slots in as a proxy between containers. It's the natural choice when you already have real service instances.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Language-polyglot teams</div>
+          <div class="step-body">If your test suite includes Go, Python, Java, and Node.js services, Toxiproxy provides a single latency injection tool that works across all languages via the network layer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">When to use</div>
+    <h2 class="section-title">When to use slowdep</h2>
+    <p class="section-body">
+      slowdep is the right choice when you want realistic latency with minimal infrastructure:
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Unit and integration tests with mocked dependencies</div>
+          <div class="step-body">When your tests use mocked functions (not real services), Toxiproxy can't help — there's no network to intercept. slowdep wraps the mock function directly.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">No infrastructure budget</div>
+          <div class="step-body">CI environments where you can't run Docker or install binaries. slowdep is a pure npm package — install it like any other dependency and use it immediately.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Per-function latency control</div>
+          <div class="step-body">When different functions should have different latency profiles (Postgres p50:5ms vs S3 p50:30ms), slowdep lets you configure each independently. Toxiproxy operates at the host:port level.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Composing</div>
+    <h2 class="section-title">When to use both</h2>
+    <p class="section-body">
+      Toxiproxy and slowdep complement each other in a layered testing strategy.
+      Use them at different levels of the test pyramid for maximum coverage.
+    </p>
+    <div class="codeblock"><pre><span class="cm">// Example: Docker Compose integration test</span>
+<span class="cm">// Toxiproxy ? real Postgres (network-level faults)</span>
+<span class="cm">// slowdep ? S3 mock (function-level latency, no network)</span>
+
+<span class="cm">// docker-compose.yml excerpt:</span>
+<span class="cm">// toxiproxy: { image: shopify/toxiproxy, ports: [8474, 5433] }</span>
+<span class="cm">// postgres:  { image: postgres:16, ports: [5432] }</span>
+
+<span class="kw">import</span> { <span class="acc">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="cm">// Postgres: via Toxiproxy (real TCP connection, network faults)</span>
+<span class="kw">const</span> db = <span class="kw">new</span> <span class="fn">Pool</span>({ host: <span class="str">'localhost'</span>, port: <span class="num">5433</span> }); <span class="cm">// Toxiproxy port</span>
+
+<span class="cm">// S3: mocked function with slowdep (no real S3 in CI)</span>
+<span class="kw">const</span> s3 = <span class="fn">withLatency</span>(mockS3.getObject, <span class="str">'s3'</span>); <span class="cm">// p50:30ms, p99:500ms</span>
+
+<span class="cm">// Together: realistic latency at every layer, realistic distribution</span></pre></div>
+    <div class="callout tip">
+      <div class="callout-title">The key insight</div>
+      <p>Toxiproxy tests your code's resilience to <em>network</em> faults. slowdep tests your code's resilience to <em>dependency</em> latency. Both gaps exist. Both need testing.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+</body>
+</html>

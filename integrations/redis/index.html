@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + Redis — integration</title>
+<meta name="description" content="Add realistic Redis latency (p50: 1ms, p99: 20ms) to cache operations in tests and local development.">
+<link rel="canonical" href="https://slowdeps.site/integrations/redis/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>Redis</div>
+    <h1 class="page-title">slowdep + Redis</h1>
+    <p class="page-desc">Add realistic Redis latency (p50: 1ms, p99: 20ms) to cache operations in tests and local development. Redis is fast — but not instant, and your code needs to handle the difference.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">redis latency profile</h2>
+    <p class="section-body">Redis is exceptionally fast in production — sub-millisecond at p50. But under memory pressure, key eviction, or network jitter, the p99 can spike to 20ms+. Without slowdep, your local Redis returns in &lt;0.1ms and you never notice code that assumes cache is "free".</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">redis</span>
+        <span class="preset-val">1ms</span>
+        <span class="preset-val">8ms</span>
+        <span class="preset-val">20ms</span>
+        <span class="preset-err">0.05%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Why test Redis latency?</div>
+      <p>Code that calls Redis in a loop (fetching 100 keys one at a time) runs fine locally where each call takes 0.1ms, but becomes a 100ms bottleneck in production. Realistic latency exposes these patterns in tests before they reach users.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap the ioredis client</h2>
+    <p class="section-body">The fastest path: use <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on your ioredis instance. Every command — <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">get</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">set</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">del</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">expire</code>, and pipeline — will experience realistic latency.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.<span class="acc">REDIS_URL</span>);
+
+<span class="cm">// Wrap every Redis command with realistic latency</span>
+<span class="kw">const</span> <span class="acc">slowRedis</span> = <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>);
+
+<span class="cm">// Cache-aside pattern — now with realistic latency</span>
+<span class="kw">async function</span> <span class="fn">getCachedUser</span>(userId: string) {
+  <span class="kw">const</span> cached = <span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">get</span>(<span class="str">`user:</span>${userId}<span class="str">`</span>);
+  <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">fetchUserFromDB</span>(userId);
+  <span class="kw">await</span> <span class="acc">slowRedis</span>.<span class="fn">set</span>(<span class="str">`user:</span>${userId}<span class="str">`</span>, JSON.<span class="fn">stringify</span>(user), <span class="str">'EX'</span>, <span class="num">3600</span>);
+  <span class="kw">return</span> user;
+}
+</pre>
+    </div>
+  </div>
+
+  <!-- INDIVIDUAL WRAPPING -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Wrap get and set independently</h2>
+    <p class="section-body">If you want different latency profiles for reads vs writes, or you only want to slow specific commands, wrap them individually with <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatency</code>.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.<span class="acc">REDIS_URL</span>);
+
+<span class="cm">// Standard redis preset for reads</span>
+<span class="kw">const</span> <span class="acc">slowGet</span> = <span class="fn">withLatency</span>(redis.get.<span class="fn">bind</span>(redis), <span class="str">'redis'</span>);
+
+<span class="cm">// Writes are slightly slower due to persistence overhead</span>
+<span class="kw">const</span> <span class="acc">slowSet</span> = <span class="fn">withLatency</span>(redis.set.<span class="fn">bind</span>(redis), { p50: <span class="num">2</span>, p99: <span class="num">30</span> });
+
+<span class="cm">// DEL is fast, same as GET</span>
+<span class="kw">const</span> <span class="acc">slowDel</span> = <span class="fn">withLatency</span>(redis.del.<span class="fn">bind</span>(redis), <span class="str">'redis'</span>);
+
+<span class="cm">// Use them as drop-in replacements</span>
+<span class="kw">const</span> value = <span class="kw">await</span> <span class="acc">slowGet</span>(<span class="str">'session:abc123'</span>);
+<span class="kw">await</span> <span class="acc">slowSet</span>(<span class="str">'session:abc123'</span>, <span class="str">'data'</span>, <span class="str">'EX'</span>, <span class="num">86400</span>);
+<span class="kw">await</span> <span class="acc">slowDel</span>(<span class="str">'session:abc123'</span>);
+</pre>
+    </div>
+  </div>
+
+  <!-- TESTING -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Test cache-miss vs cache-hit latency</h2>
+    <p class="section-body">The most important Redis test: verify your service correctly distinguishes the fast cache-hit path from the slower cache-miss path that falls through to the database.</p>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'redis-miss')">Cache miss</button>
+      <button class="tab" onclick="switchTab(this,'redis-hit')">Cache hit</button>
+      <button class="tab" onclick="switchTab(this,'redis-timeout')">Timeout</button>
+    </div>
+    <div id="redis-miss" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'cache miss: falls through to DB and caches result'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Miss: GET returns null, then SET stores the DB result</span>
+  <span class="kw">const</span> mockGet = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="kw">null</span>),  <span class="cm">// cache miss</span>
+    <span class="str">'redis'</span>
+  );
+  <span class="kw">const</span> mockSet = <span class="fn">withLatency</span>(jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="str">'OK'</span>), <span class="str">'redis'</span>);
+  <span class="kw">const</span> mockDbFetch = jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="str">'u1'</span>, name: <span class="str">'Alice'</span> });
+
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">getCachedUser</span>(<span class="str">'u1'</span>, { get: mockGet, set: mockSet, db: mockDbFetch });
+
+  <span class="fn">expect</span>(mockDbFetch).<span class="fn">toHaveBeenCalledOnce</span>();  <span class="cm">// DB was hit</span>
+  <span class="fn">expect</span>(mockSet).<span class="fn">toHaveBeenCalledOnce</span>();      <span class="cm">// result was cached</span>
+  <span class="fn">expect</span>(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>);
+});
+</pre></div></div>
+
+    <div id="redis-hit" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'cache hit: returns cached value without hitting DB'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> cachedUser = JSON.<span class="fn">stringify</span>({ id: <span class="str">'u1'</span>, name: <span class="str">'Alice'</span> });
+
+  <span class="cm">// Hit: GET returns the cached JSON string</span>
+  <span class="kw">const</span> mockGet = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(cachedUser),
+    <span class="str">'redis'</span>
+  );
+  <span class="kw">const</span> mockDbFetch = jest.<span class="fn">fn</span>();
+
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">getCachedUser</span>(<span class="str">'u1'</span>, { get: mockGet, db: mockDbFetch });
+
+  <span class="fn">expect</span>(mockDbFetch).<span class="fn">not</span>.<span class="fn">toHaveBeenCalled</span>();  <span class="cm">// DB was NOT hit</span>
+  <span class="fn">expect</span>(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>);
+});
+</pre></div></div>
+
+    <div id="redis-timeout" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'slow Redis falls back to DB gracefully'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Simulate Redis under pressure — p99 of 500ms</span>
+  <span class="kw">const</span> slowGet = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="kw">null</span>),
+    { p50: <span class="num">100</span>, p99: <span class="num">500</span> }
+  );
+  <span class="kw">const</span> mockDbFetch = jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ id: <span class="str">'u1'</span>, name: <span class="str">'Alice'</span> });
+
+  <span class="cm">// Your service should fall back to DB if Redis takes > 50ms</span>
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">getCachedUserWithFallback</span>(<span class="str">'u1'</span>, {
+    get: slowGet,
+    db: mockDbFetch,
+    redisTimeoutMs: <span class="num">50</span>
+  });
+
+  <span class="cm">// DB fallback happened because Redis was too slow</span>
+  <span class="fn">expect</span>(mockDbFetch).<span class="fn">toHaveBeenCalled</span>();
+  <span class="fn">expect</span>(user.name).<span class="fn">toBe</span>(<span class="str">'Alice'</span>);
+});
+</pre></div></div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Gate on NODE_ENV or SLOWDEP_ENABLED</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.<span class="acc">REDIS_URL</span>);
+
+<span class="kw">export const</span> <span class="acc">cache</span> = process.env.<span class="acc">SLOWDEP_ENABLED</span> === <span class="str">'true'</span>
+  ? <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>)
+  : redis;
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Pipeline note</div>
+      <p>If you use ioredis pipelines (<code>redis.pipeline().get(...).set(...).exec()</code>), <code>withLatencyAll</code> wraps the <code>pipeline</code> factory method, not the individual pipeline commands. The latency applies once — at the pipeline execution — which accurately reflects the single round-trip cost.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>N+1 cache reads</strong> — realistic per-command latency makes sequential cache reads visible; push toward <code>mget</code> with multiple keys</li>
+        <li><strong>Cache stampede handling</strong> — when multiple requests miss the cache simultaneously, does your code protect against thundering herd?</li>
+        <li><strong>Redis fallback to DB</strong> — if Redis is slow (p99 tail), does your service degrade gracefully to the database?</li>
+        <li><strong>Session timeout handling</strong> — does your auth middleware handle a slow <code>get(sessionKey)</code> within the request deadline?</li>
+        <li><strong>Rate limiter accuracy</strong> — sliding window rate limiters depend on Redis ZADD/ZREMRANGEBYSCORE; verify they work with network latency</li>
+        <li><strong>Pub/sub delivery timing</strong> — event-driven features relying on Redis pub/sub need to account for delivery latency in their correctness guarantees</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed Redis wrapper</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">'ioredis'</span>;
+<span class="kw">import</span> { withLatency, withLatencyAll } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.<span class="acc">REDIS_URL</span>);
+
+<span class="cm">// withLatencyAll preserves the Redis type — slowCache is still typed as Redis</span>
+<span class="kw">const</span> <span class="acc">slowCache</span>: Redis = <span class="fn">withLatencyAll</span>(redis, <span class="str">'redis'</span>);
+
+<span class="cm">// Type-safe cache helper</span>
+<span class="kw">async function</span> <span class="fn">getJson</span>&lt;T&gt;(key: string): Promise&lt;T | <span class="kw">null</span>&gt; {
+  <span class="kw">const</span> raw = <span class="kw">await</span> <span class="acc">slowCache</span>.<span class="fn">get</span>(key);   <span class="cm">// string | null</span>
+  <span class="kw">return</span> raw ? JSON.<span class="fn">parse</span>(raw) <span class="kw">as</span> T : <span class="kw">null</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">setJson</span>&lt;T&gt;(key: string, value: T, ttlSeconds: <span class="kw">number</span>): Promise&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">await</span> <span class="acc">slowCache</span>.<span class="fn">set</span>(key, JSON.<span class="fn">stringify</span>(value), <span class="str">'EX'</span>, ttlSeconds);
+}
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>

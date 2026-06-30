@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>withLatency — slowdep API</title>
+<meta name="description" content="Full API reference for the withLatency function — parameters, return type, TypeScript signature, and examples.">
+<link rel="canonical" href="https://slowdeps.site/docs/withLatency/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/getting-started/" class="nav-link active">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Docs<span>/</span>withLatency</div>
+    <h1 class="page-title">withLatency(fn, profile)</h1>
+    <p class="page-desc">Full API reference for the withLatency function — parameters, return type, TypeScript signature, and examples.</p>
+  </div>
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-eyebrow">Signature</div>
+    <h2 class="section-title">TypeScript signature</h2>
+    <div class="codeblock"><pre><span class="kw">function</span> <span class="fn">withLatency</span>&lt;
+  T <span class="kw">extends</span> (...args: <span class="kw">any</span>[]) => Promise&lt;<span class="kw">any</span>&gt;
+&gt;(
+  fn: T,
+  profile: <span class="acc">LatencyPreset</span> | <span class="acc">LatencyOptions</span>
+): T</pre></div>
+
+    <p class="section-body" style="margin-top:1rem;">The wrapped function has exactly the same type as the original. All parameter types, return type, and overloads are preserved.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Parameters</div>
+    <h2 class="section-title">Function parameters</h2>
+
+    <table class="param-table">
+      <tr><th>param</th><th>type</th><th>default</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">fn</td>
+        <td class="param-type">(...args: any[]) =&gt; Promise&lt;any&gt;</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">The async function to wrap. Must return a Promise. The wrapped function will have the same signature.</td>
+      </tr>
+      <tr>
+        <td class="param-name">profile</td>
+        <td class="param-type">LatencyPreset | LatencyOptions</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">Either a preset string name (<code>'postgres'</code>, <code>'redis'</code>, etc.) or a custom <code>LatencyOptions</code> object with explicit p50/p99 values.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Options</div>
+    <h2 class="section-title">LatencyOptions</h2>
+    <p class="section-body">When passing a custom options object instead of a preset string, these fields are available:</p>
+
+    <table class="param-table">
+      <tr><th>field</th><th>type</th><th>default</th><th>description</th></tr>
+      <tr>
+        <td class="param-name">p50</td>
+        <td class="param-type">number</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">Median latency in milliseconds. Half of sampled delays will be below this value. Required.</td>
+      </tr>
+      <tr>
+        <td class="param-name">p99</td>
+        <td class="param-type">number</td>
+        <td class="param-default">—</td>
+        <td class="param-desc">99th-percentile latency in milliseconds. Used alongside p50 to fit the lognormal distribution. Must be greater than p50. Required.</td>
+      </tr>
+      <tr>
+        <td class="param-name">errorRate</td>
+        <td class="param-type">number</td>
+        <td class="param-default">0</td>
+        <td class="param-desc">Fraction of calls that reject with a transient error before the underlying function is called. Range: 0 to 1. A value of 0.01 means 1% of calls fail. Optional.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Return value</div>
+    <h2 class="section-title">What withLatency returns</h2>
+    <p class="section-body"><code>withLatency</code> returns a new function with the same TypeScript type as <code>fn</code>. Calling the returned function:</p>
+
+    <div class="prose" style="margin-top:0.75rem;">
+      <ol>
+        <li>Samples a delay from the lognormal distribution parameterized by the profile.</li>
+        <li>If <code>errorRate</code> fires, immediately rejects with <code>new Error('Simulated transient error')</code>.</li>
+        <li>Otherwise, waits the sampled delay, then calls <code>fn</code> with the original arguments.</li>
+        <li>Returns <code>fn</code>'s resolved value, or rethrows any error thrown by <code>fn</code>.</li>
+      </ol>
+    </div>
+
+    <p class="section-body" style="margin-top:0.75rem;">The returned function is a plain async function — not a Proxy. It can be called, passed around, bound to objects, and destructured exactly like a regular function.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Examples</div>
+    <h2 class="section-title">Code examples</h2>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'wl-preset')">Preset</button>
+      <button class="tab" onclick="switchTab(this,'wl-custom')">Custom profile</button>
+      <button class="tab" onclick="switchTab(this,'wl-errrate')">With error rate</button>
+      <button class="tab" onclick="switchTab(this,'wl-ts')">TypeScript</button>
+    </div>
+
+    <div id="wl-preset" class="code-panel active">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="kw">async function</span> <span class="fn">getUser</span>(id: <span class="kw">number</span>) {
+  <span class="kw">return</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM users WHERE id = $1'</span>, [id])
+}
+
+<span class="cm">// Wrap with Postgres preset (p50: 5ms, p99: 200ms, errorRate: 0.001)</span>
+<span class="kw">const</span> <span class="acc">slowGetUser</span> = <span class="fn">withLatency</span>(getUser, <span class="str">'postgres'</span>)
+
+<span class="cm">// Call exactly like the original</span>
+<span class="kw">const</span> user = <span class="kw">await</span> <span class="acc">slowGetUser</span>(<span class="num">42</span>)
+console.<span class="fn">log</span>(user.name)</pre></div>
+    </div>
+
+    <div id="wl-custom" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="cm">// Custom profile matching your actual production metrics</span>
+<span class="kw">const</span> <span class="acc">slowFetch</span> = <span class="fn">withLatency</span>(fetchProduct, {
+  p50: <span class="num">45</span>,    <span class="cm">// your measured median</span>
+  p99: <span class="num">600</span>,   <span class="cm">// your measured 99th percentile</span>
+})
+
+<span class="kw">const</span> product = <span class="kw">await</span> <span class="acc">slowFetch</span>(<span class="str">'sku-123'</span>)</pre></div>
+    </div>
+
+    <div id="wl-errrate" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="cm">// 2% of calls will reject — test your retry logic</span>
+<span class="kw">const</span> <span class="acc">slowCharge</span> = <span class="fn">withLatency</span>(createCharge, {
+  p50: <span class="num">200</span>,
+  p99: <span class="num">2000</span>,
+  errorRate: <span class="num">0.02</span>
+})
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> charge = <span class="kw">await</span> <span class="acc">slowCharge</span>({ amount: <span class="num">1000</span> })
+  <span class="fn">fulfill</span>(charge)
+} <span class="kw">catch</span> (err) {
+  <span class="cm">// err.message === 'Simulated transient error'</span>
+  <span class="kw">await</span> <span class="fn">scheduleRetry</span>()
+}</pre></div>
+    </div>
+
+    <div id="wl-ts" class="code-panel">
+      <div class="code-block"><pre><span class="kw">import</span> { <span class="fn">withLatency</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+<span class="kw">import</span> <span class="kw">type</span> { <span class="acc">LatencyOptions</span>, <span class="acc">LatencyPreset</span> } <span class="kw">from</span> <span class="str">'slowdep'</span>
+
+<span class="cm">// Type-annotated options object</span>
+<span class="kw">const</span> opts: <span class="acc">LatencyOptions</span> = { p50: <span class="num">5</span>, p99: <span class="num">200</span>, errorRate: <span class="num">0.001</span> }
+
+<span class="cm">// Explicit type parameter when inference needs help</span>
+<span class="kw">const</span> <span class="acc">slowGetUser</span> = <span class="fn">withLatency</span>&lt;<span class="kw">typeof</span> getUser&gt;(getUser, opts)
+
+<span class="cm">// Preset as typed string literal</span>
+<span class="kw">const</span> preset: <span class="acc">LatencyPreset</span> = <span class="str">'redis'</span>
+<span class="kw">const</span> <span class="acc">slowGet</span> = <span class="fn">withLatency</span>(cacheGet, preset)
+
+<span class="cm">// Return type is preserved — same as original function</span>
+<span class="kw">const</span> result: <span class="acc">Awaited</span>&lt;<span class="kw">ReturnType</span>&lt;<span class="kw">typeof</span> getUser&gt;&gt; = <span class="kw">await</span> <span class="acc">slowGetUser</span>(<span class="num">1</span>)</pre></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-eyebrow">Behavior</div>
+    <h2 class="section-title">Detailed call behavior</h2>
+    <p class="section-body">On each invocation of the wrapped function, slowdep follows this sequence:</p>
+
+    <div class="steps" style="margin-top:1rem;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Sample latency</div>
+          <div class="step-body">Two uniform random numbers are generated via <code>Math.random()</code>. The Box-Muller transform converts them to a standard normal sample, which is then scaled by the lognormal parameters (mu = ln(p50), sigma derived from p99) and exponentiated. The result is capped at p99 × 3.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Check error rate</div>
+          <div class="step-body">A third random number is generated and compared to <code>errorRate</code>. If it falls below <code>errorRate</code>, the call rejects immediately with <code>new Error('Simulated transient error')</code>. The original function is not called.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Wait the sampled delay</div>
+          <div class="step-body">A <code>setTimeout</code> for the sampled duration is awaited. This is the artificial latency added to the call.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Call the original function</div>
+          <div class="step-body">The original <code>fn</code> is called with all the arguments passed to the wrapper. Its resolved value is returned, or any error it throws is rethrown transparently.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+
+<script>
+function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+</script>
+</body>
+</html>

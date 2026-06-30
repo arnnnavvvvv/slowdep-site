@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>slowdep + OpenAI — integration</title>
+<meta name="description" content="Simulate realistic OpenAI API latency (p50: 800ms, p99: 8s) without burning tokens. Test timeout and retry logic for AI-powered features.">
+<link rel="canonical" href="https://slowdeps.site/integrations/openai/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c0c'/><text x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='400' fill='%23888888'>~</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">slowdep</a>
+    <div class="nav-links">
+      <a href="/docs/" class="nav-link">Docs</a>
+      <a href="/guides/" class="nav-link">Guides</a>
+      <a href="/integrations/" class="nav-link active">Integrations</a>
+      <a href="/comparisons/" class="nav-link">Compare</a>
+      <a href="/learn/" class="nav-link">Learn</a>
+      <a href="/faq/" class="nav-link">FAQ</a>
+      <a href="/glossary/" class="nav-link">Glossary</a>
+      <a href="/troubleshooting/" class="nav-link">Troubleshooting</a>
+    </div>
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="nav-cta" target="_blank">GitHub ?</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">slowdep</a><span>/</span>Integrations<span>/</span>OpenAI</div>
+    <h1 class="page-title">slowdep + OpenAI</h1>
+    <p class="page-desc">Simulate realistic OpenAI API latency (p50: 800ms, p99: 8s) without burning tokens. Test timeout and retry logic for AI-powered features before you go to production.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- PRESET VALUES -->
+  <div class="section">
+    <div class="section-eyebrow">Preset</div>
+    <h2 class="section-title">openai latency profile</h2>
+    <p class="section-body">LLM APIs are the slowest dependency most applications deal with. The <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">'openai'</code> preset reflects real-world gpt-4o latency — 800ms for short responses, up to 8s for longer outputs. The 0.5% error rate captures rate limits and transient 500s.</p>
+    <div class="presets-grid">
+      <div class="preset-row header">
+        <span>preset</span><span>p50</span><span>p95</span><span>p99</span><span>errorRate</span>
+      </div>
+      <div class="preset-row">
+        <span class="preset-name">openai</span>
+        <span class="preset-val">800ms</span>
+        <span class="preset-val">4s</span>
+        <span class="preset-val">8s</span>
+        <span class="preset-err">0.5%</span>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:1.25rem;">
+      <div class="callout-title">Why this matters more for AI features</div>
+      <p>Most services have a 30s request timeout. OpenAI p99 can reach 8s for long completions — that's 27% of your budget on one dependency. Without testing against realistic latency, your timeout thresholds, loading UX, and retry budgets are guesses.</p>
+    </div>
+  </div>
+
+  <!-- QUICK START -->
+  <div class="section">
+    <div class="section-eyebrow">Quick start</div>
+    <h2 class="section-title">Wrap chat completions</h2>
+    <p class="section-body">Wrap <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">client.chat.completions.create</code> directly. The OpenAI SDK's nested structure means <code style="font-family:var(--mono);font-size:12px;color:var(--cyan);background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:3px;">withLatencyAll</code> on the top-level client won't reach deeply nested methods — wrapping the specific method you use is the right approach.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">'openai'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({ apiKey: process.env.<span class="acc">OPENAI_API_KEY</span> });
+
+<span class="cm">// Wrap the specific method — bind to preserve the internal `this` context</span>
+<span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
+  client.chat.completions.create.<span class="fn">bind</span>(client.chat.completions),
+  <span class="str">'openai'</span>
+);
+
+<span class="cm">// Use slowCreate exactly like client.chat.completions.create</span>
+<span class="kw">const</span> completion = <span class="kw">await</span> <span class="acc">slowCreate</span>({
+  model: <span class="str">'gpt-4o'</span>,
+  messages: [
+    { role: <span class="str">'system'</span>, content: <span class="str">'You are a helpful assistant.'</span> },
+    { role: <span class="str">'user'</span>, content: <span class="str">'Summarize the key points of async programming.'</span> }
+  ],
+  max_tokens: <span class="num">500</span>
+});
+
+console.<span class="fn">log</span>(completion.choices[<span class="num">0</span>].message.content);
+</pre>
+    </div>
+  </div>
+
+  <!-- FAKE RESPONSE PATTERN -->
+  <div class="section">
+    <div class="section-eyebrow">Wrapping a client</div>
+    <h2 class="section-title">The fake response pattern</h2>
+    <p class="section-body">Combine slowdep with a Jest mock to return controlled fake completions while applying realistic latency. This is the most useful pattern for unit tests — you get deterministic output AND realistic timing, without spending tokens.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { ChatCompletion } <span class="kw">from</span> <span class="str">'openai/resources'</span>;
+
+<span class="cm">// A factory that returns a fake ChatCompletion with the given content</span>
+<span class="kw">function</span> <span class="fn">fakeCompletion</span>(content: string): ChatCompletion {
+  <span class="kw">return</span> {
+    id: <span class="str">'chatcmpl-test'</span>,
+    object: <span class="str">'chat.completion'</span>,
+    created: Math.<span class="fn">floor</span>(Date.<span class="fn">now</span>() / <span class="num">1000</span>),
+    model: <span class="str">'gpt-4o'</span>,
+    choices: [{
+      index: <span class="num">0</span>,
+      message: { role: <span class="str">'assistant'</span>, content, refusal: <span class="kw">null</span> },
+      logprobs: <span class="kw">null</span>,
+      finish_reason: <span class="str">'stop'</span>
+    }],
+    usage: { prompt_tokens: <span class="num">20</span>, completion_tokens: <span class="num">40</span>, total_tokens: <span class="num">60</span> }
+  };
+}
+
+<span class="cm">// Fake create: returns a deterministic response with realistic latency</span>
+<span class="kw">export const</span> <span class="acc">mockCreate</span> = <span class="fn">withLatency</span>(
+  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeCompletion</span>(<span class="str">'Async programming separates task initiation from completion.'</span>)),
+  <span class="str">'openai'</span>
+);
+</pre>
+    </div>
+  </div>
+
+  <!-- TESTING: TIMEOUT AND RETRY -->
+  <div class="section">
+    <div class="section-eyebrow">Testing</div>
+    <h2 class="section-title">Test timeout and retry logic</h2>
+    <p class="section-body">The two most important AI-feature tests: does your timeout fire correctly, and does your retry handler deal with the 0.5% error rate gracefully?</p>
+
+    <div class="code-tabs">
+      <button class="tab active" onclick="switchTab(this,'oai-timeout')">Timeout</button>
+      <button class="tab" onclick="switchTab(this,'oai-retry')">Retry</button>
+      <button class="tab" onclick="switchTab(this,'oai-loading')">Loading state</button>
+    </div>
+    <div id="oai-timeout" class="code-panel active"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { summarizeText } <span class="kw">from</span> <span class="str">'../src/ai/summarize'</span>;
+
+<span class="fn">test</span>(<span class="str">'summarizeText throws TimeoutError when OpenAI takes > 10s'</span>, <span class="kw">async</span> () => {
+  <span class="cm">// Simulate a very slow completion — e.g. long output, high load</span>
+  <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeCompletion</span>(<span class="str">'summary'</span>)),
+    { p50: <span class="num">12000</span>, p99: <span class="num">20000</span> }
+  );
+
+  <span class="kw">await</span> <span class="fn">expect</span>(
+    <span class="fn">summarizeText</span>(<span class="str">'long article...'</span>, { create: slowCreate, timeoutMs: <span class="num">10000</span> })
+  ).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">'TimeoutError'</span>);
+}, <span class="num">15000</span>);
+</pre></div></div>
+
+    <div id="oai-retry" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="fn">test</span>(<span class="str">'retries once on OpenAI 429 and succeeds'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> mockCreate = jest.<span class="fn">fn</span>()
+    .<span class="fn">mockRejectedValueOnce</span>(<span class="fn">Object</span>.<span class="fn">assign</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'Rate limit exceeded'</span>), { status: <span class="num">429</span> }))
+    .<span class="fn">mockResolvedValueOnce</span>(<span class="fn">fakeCompletion</span>(<span class="str">'success on retry'</span>));
+
+  <span class="cm">// Apply realistic latency to both the failure and the success</span>
+  <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(mockCreate, <span class="str">'openai'</span>);
+
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">callWithRetry</span>(slowCreate, {
+    model: <span class="str">'gpt-4o'</span>,
+    messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'hello'</span> }]
+  });
+
+  <span class="fn">expect</span>(result.choices[<span class="num">0</span>].message.content).<span class="fn">toBe</span>(<span class="str">'success on retry'</span>);
+  <span class="fn">expect</span>(mockCreate).<span class="fn">toHaveBeenCalledTimes</span>(<span class="num">2</span>);
+}, <span class="num">20000</span>);
+</pre></div></div>
+
+    <div id="oai-loading" class="code-panel"><div class="code-block"><pre><span class="kw">import</span> { render, screen, waitFor } <span class="kw">from</span> <span class="str">'@testing-library/react'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+<span class="kw">import</span> { SummaryWidget } <span class="kw">from</span> <span class="str">'../src/components/SummaryWidget'</span>;
+
+<span class="fn">test</span>(<span class="str">'shows loading spinner while waiting for completion'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> slowCreate = <span class="fn">withLatency</span>(
+    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeCompletion</span>(<span class="str">'The summary is...'</span>)),
+    { p50: <span class="num">1500</span>, p99: <span class="num">3000</span> }
+  );
+
+  <span class="fn">render</span>(&lt;SummaryWidget text=<span class="str">"article..."</span> createFn={slowCreate} /&gt;);
+
+  <span class="cm">// Loading state is visible immediately</span>
+  <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByRole</span>(<span class="str">'progressbar'</span>)).<span class="fn">toBeInTheDocument</span>();
+
+  <span class="cm">// After the (simulated) slow response, summary appears</span>
+  <span class="kw">await</span> <span class="fn">waitFor</span>(() => {
+    <span class="fn">expect</span>(<span class="fn">screen</span>.<span class="fn">getByText</span>(<span class="str">/The summary is/</span>)).<span class="fn">toBeInTheDocument</span>();
+  }, { timeout: <span class="num">5000</span> });
+});
+</pre></div></div>
+  </div>
+
+  <!-- INDIVIDUAL WRAPPING -->
+  <div class="section">
+    <div class="section-eyebrow">Individual wrapping</div>
+    <h2 class="section-title">Wrap embeddings and other endpoints</h2>
+    <p class="section-body">The same pattern works for embeddings, moderation, and fine-tuning — wrap the specific method you use. Embeddings are notably faster than chat completions; use a custom profile.</p>
+    <div class="codeblock" style="margin-top:1.25rem;">
+<pre><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">'openai'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({ apiKey: process.env.<span class="acc">OPENAI_API_KEY</span> });
+
+<span class="cm">// Chat completions — use the openai preset</span>
+<span class="kw">const</span> <span class="acc">slowChat</span> = <span class="fn">withLatency</span>(
+  client.chat.completions.create.<span class="fn">bind</span>(client.chat.completions),
+  <span class="str">'openai'</span>
+);
+
+<span class="cm">// Embeddings are ~10x faster than chat completions</span>
+<span class="kw">const</span> <span class="acc">slowEmbed</span> = <span class="fn">withLatency</span>(
+  client.embeddings.create.<span class="fn">bind</span>(client.embeddings),
+  { p50: <span class="num">80</span>, p99: <span class="num">400</span> }
+);
+
+<span class="cm">// Moderation is fast, similar to embeddings</span>
+<span class="kw">const</span> <span class="acc">slowModerate</span> = <span class="fn">withLatency</span>(
+  client.moderations.create.<span class="fn">bind</span>(client.moderations),
+  { p50: <span class="num">100</span>, p99: <span class="num">500</span> }
+);
+
+<span class="kw">const</span> embedding = <span class="kw">await</span> <span class="acc">slowEmbed</span>({
+  model: <span class="str">'text-embedding-3-small'</span>,
+  input: <span class="str">'What is the meaning of async programming?'</span>
+});
+</pre>
+    </div>
+  </div>
+
+  <!-- PRODUCTION SAFETY -->
+  <div class="section">
+    <div class="section-eyebrow">Production safety</div>
+    <h2 class="section-title">Never slow real API calls</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">'openai'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({ apiKey: process.env.<span class="acc">OPENAI_API_KEY</span> });
+
+<span class="kw">const</span> rawCreate = client.chat.completions.create.<span class="fn">bind</span>(client.chat.completions);
+
+<span class="cm">// In tests, always use a mock + slowdep — never hit the real API</span>
+<span class="cm">// In development, you can optionally add latency to a real client for manual UX testing</span>
+<span class="kw">export const</span> <span class="acc">chatCreate</span> = process.env.<span class="acc">NODE_ENV</span> === <span class="str">'test'</span>
+  ? <span class="fn">withLatency</span>(jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="fn">fakeCompletion</span>(<span class="str">'...'</span>)), <span class="str">'openai'</span>)
+  : rawCreate;  <span class="cm">// always use real client in production and development</span>
+</pre>
+    </div>
+    <div class="callout warn" style="margin-top:1.25rem;">
+      <div class="callout-title">Never add latency to real API calls</div>
+      <p>OpenAI calls already have real latency. Only use slowdep when wrapping a <strong>mock</strong> function (e.g. <code>jest.fn()</code>) that returns a fake response. If you accidentally wrap a real API call, you'll be adding fake latency on top of real latency.</p>
+    </div>
+  </div>
+
+  <!-- WHAT TO TEST -->
+  <div class="section">
+    <div class="section-eyebrow">What to test</div>
+    <h2 class="section-title">Scenarios this integration helps you verify</h2>
+    <div class="prose" style="margin-top:0.75rem;">
+      <ul>
+        <li><strong>Request timeout calibration</strong> — with p99 of 8s, is your 10s server timeout actually enough margin? What about chained LLM calls?</li>
+        <li><strong>Loading state UX</strong> — does your UI show a spinner within 200ms? Does it show a "still working..." message after 3s?</li>
+        <li><strong>Retry budget</strong> — with 0.5% error rate and 800ms p50, three retries with backoff can take 5+ seconds — is that within your total budget?</li>
+        <li><strong>Parallel vs sequential calls</strong> — two parallel completions at p50 = 800ms is very different from two sequential calls at p50 = 1.6s</li>
+        <li><strong>Circuit breaker behavior</strong> — after several slow responses, does your circuit breaker open and return a cached/fallback response?</li>
+        <li><strong>Cost guard</strong> — for features with usage limits, realistic latency helps you simulate what happens when the token budget is exhausted mid-request</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TYPESCRIPT -->
+  <div class="section">
+    <div class="section-eyebrow">TypeScript</div>
+    <h2 class="section-title">Typed completion wrapper</h2>
+    <div class="codeblock" style="margin-top:1rem;">
+<pre><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">'openai'</span>;
+<span class="kw">import</span> <span class="kw">type</span> { ChatCompletion, ChatCompletionCreateParamsNonStreaming } <span class="kw">from</span> <span class="str">'openai/resources'</span>;
+<span class="kw">import</span> { withLatency } <span class="kw">from</span> <span class="str">'slowdep'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({ apiKey: process.env.<span class="acc">OPENAI_API_KEY</span> });
+
+<span class="cm">// Return type is inferred as Promise&lt;ChatCompletion&gt; — no casting needed</span>
+<span class="kw">const</span> <span class="acc">slowCreate</span> = <span class="fn">withLatency</span>(
+  (params: ChatCompletionCreateParamsNonStreaming): Promise&lt;ChatCompletion&gt; =>
+    client.chat.completions.<span class="fn">create</span>(params) <span class="kw">as</span> Promise&lt;ChatCompletion&gt;,
+  <span class="str">'openai'</span>
+);
+
+<span class="cm">// Full type inference on the result</span>
+<span class="kw">const</span> result: ChatCompletion = <span class="kw">await</span> <span class="acc">slowCreate</span>({
+  model: <span class="str">'gpt-4o'</span>,
+  messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'Hello'</span> }]
+});
+
+<span class="kw">const</span> text: string = result.choices[<span class="num">0</span>].message.content ?? <span class="str">''</span>;
+</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/arnnnavvvvv/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      github
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <a href="https://www.npmjs.com/package/slowdep" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4zM8 8v8h3.2v-6.4h1.6V16H16V8H8z"/></svg>
+      npm
+    </a>
+    <span style="color:var(--border-light)">·</span>
+    <span class="footer-link" style="cursor:default">MIT license</span>
+  </div>
+  <div class="footer-copy">slowdep · zero dependencies · TypeScript included</div>
+  <div class="footer-copy" style="margin-top:0.75rem;">made with ? by <a href="https://x.com/aarnxvvv" target="_blank" style="color:var(--mid);transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--mid)'">@aarnxvvv</a></div>
+</footer>
+<script>function switchTab(btn,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.code-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}</script>
+</body>
+</html>
